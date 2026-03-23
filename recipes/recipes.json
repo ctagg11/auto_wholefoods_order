@@ -1,0 +1,471 @@
+[
+  {
+    "name": "Sheet Pan Chicken Fajitas",
+    "servings": 4,
+    "tags": [
+      "weeknight",
+      "easy",
+      "kid-friendly"
+    ],
+    "source": "starter",
+    "ingredients": [
+      {
+        "name": "chicken breast",
+        "qty": 1.5,
+        "unit": "lb",
+        "category": "meat",
+        "search_term": "organic boneless skinless chicken breast"
+      },
+      {
+        "name": "bell pepper",
+        "qty": 3,
+        "unit": "whole",
+        "category": "produce",
+        "search_term": "organic bell peppers"
+      },
+      {
+        "name": "yellow onion",
+        "qty": 1,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "olive oil",
+        "qty": 2,
+        "unit": "tbsp",
+        "category": "pantry"
+      },
+      {
+        "name": "chili powder",
+        "qty": 1,
+        "unit": "tbsp",
+        "category": "pantry"
+      },
+      {
+        "name": "cumin",
+        "qty": 1,
+        "unit": "tsp",
+        "category": "pantry"
+      },
+      {
+        "name": "garlic powder",
+        "qty": 0.5,
+        "unit": "tsp",
+        "category": "pantry"
+      },
+      {
+        "name": "lime",
+        "qty": 2,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "flour tortillas",
+        "qty": 1,
+        "unit": "pack",
+        "category": "bakery",
+        "search_term": "365 flour tortillas"
+      },
+      {
+        "name": "shredded cheddar cheese",
+        "qty": 1,
+        "unit": "cup",
+        "category": "dairy",
+        "search_term": "365 shredded cheddar cheese"
+      },
+      {
+        "name": "sour cream",
+        "qty": 0.5,
+        "unit": "cup",
+        "category": "dairy"
+      }
+    ],
+    "steps": [
+      "Preheat oven to 400°F.",
+      "Slice chicken, peppers, and onion into strips.",
+      "Toss with olive oil, chili powder, cumin, and garlic powder on a sheet pan.",
+      "Roast 20-25 minutes until chicken is cooked through.",
+      "Squeeze lime over everything and serve in warm tortillas with cheese and sour cream."
+    ]
+  },
+  {
+    "name": "One-Pot Pasta with Meat Sauce",
+    "servings": 6,
+    "tags": [
+      "weeknight",
+      "easy",
+      "kid-friendly",
+      "comfort"
+    ],
+    "source": "starter",
+    "ingredients": [
+      {
+        "name": "ground beef",
+        "qty": 1,
+        "unit": "lb",
+        "category": "meat",
+        "search_term": "365 organic ground beef 85/15"
+      },
+      {
+        "name": "penne pasta",
+        "qty": 1,
+        "unit": "lb",
+        "category": "pantry",
+        "search_term": "365 organic penne"
+      },
+      {
+        "name": "marinara sauce",
+        "qty": 24,
+        "unit": "oz",
+        "category": "pantry",
+        "search_term": "365 organic marinara sauce"
+      },
+      {
+        "name": "yellow onion",
+        "qty": 1,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "garlic cloves",
+        "qty": 3,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "olive oil",
+        "qty": 1,
+        "unit": "tbsp",
+        "category": "pantry"
+      },
+      {
+        "name": "Italian seasoning",
+        "qty": 1,
+        "unit": "tsp",
+        "category": "pantry"
+      },
+      {
+        "name": "parmesan cheese",
+        "qty": 0.5,
+        "unit": "cup",
+        "category": "dairy",
+        "search_term": "parmigiano reggiano wedge"
+      }
+    ],
+    "steps": [
+      "Dice onion and mince garlic. Brown ground beef with onion and garlic in olive oil.",
+      "Add marinara sauce, 2 cups water, and Italian seasoning. Bring to a boil.",
+      "Add penne, stir, cover, and simmer 12-15 minutes until pasta is tender.",
+      "Top with grated parmesan and serve."
+    ]
+  },
+  {
+    "name": "Honey Garlic Salmon",
+    "servings": 4,
+    "tags": [
+      "weeknight",
+      "healthy",
+      "30-min"
+    ],
+    "source": "starter",
+    "ingredients": [
+      {
+        "name": "salmon fillets",
+        "qty": 4,
+        "unit": "whole",
+        "category": "seafood",
+        "search_term": "wild caught salmon fillets"
+      },
+      {
+        "name": "honey",
+        "qty": 3,
+        "unit": "tbsp",
+        "category": "pantry"
+      },
+      {
+        "name": "soy sauce",
+        "qty": 2,
+        "unit": "tbsp",
+        "category": "pantry"
+      },
+      {
+        "name": "garlic cloves",
+        "qty": 4,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "butter",
+        "qty": 2,
+        "unit": "tbsp",
+        "category": "dairy"
+      },
+      {
+        "name": "broccoli",
+        "qty": 1,
+        "unit": "lb",
+        "category": "produce",
+        "search_term": "organic broccoli crowns"
+      },
+      {
+        "name": "jasmine rice",
+        "qty": 1.5,
+        "unit": "cup",
+        "category": "pantry",
+        "search_term": "365 jasmine rice"
+      }
+    ],
+    "steps": [
+      "Cook rice according to package directions.",
+      "Mix honey, soy sauce, and minced garlic.",
+      "Melt butter in an oven-safe skillet over medium-high heat. Sear salmon skin-side up 3 minutes.",
+      "Flip salmon, pour sauce over, and broil 5 minutes.",
+      "Steam broccoli and serve everything over rice."
+    ]
+  },
+  {
+    "name": "Chicken Quesadillas",
+    "servings": 4,
+    "tags": [
+      "easy",
+      "kid-friendly",
+      "quick",
+      "weeknight"
+    ],
+    "source": "starter",
+    "ingredients": [
+      {
+        "name": "rotisserie chicken",
+        "qty": 1,
+        "unit": "whole",
+        "category": "meat",
+        "search_term": "whole foods rotisserie chicken"
+      },
+      {
+        "name": "flour tortillas",
+        "qty": 1,
+        "unit": "pack",
+        "category": "bakery",
+        "search_term": "365 flour tortillas large"
+      },
+      {
+        "name": "shredded Mexican cheese",
+        "qty": 2,
+        "unit": "cup",
+        "category": "dairy",
+        "search_term": "365 shredded Mexican cheese blend"
+      },
+      {
+        "name": "salsa",
+        "qty": 1,
+        "unit": "jar",
+        "category": "pantry",
+        "search_term": "365 organic medium salsa"
+      },
+      {
+        "name": "avocado",
+        "qty": 2,
+        "unit": "whole",
+        "category": "produce",
+        "search_term": "organic avocados"
+      },
+      {
+        "name": "sour cream",
+        "qty": 0.5,
+        "unit": "cup",
+        "category": "dairy"
+      }
+    ],
+    "steps": [
+      "Shred rotisserie chicken.",
+      "Place a tortilla in a skillet over medium heat. Add cheese and chicken to one half.",
+      "Fold tortilla and cook 2-3 minutes per side until golden and melted.",
+      "Cut into wedges and serve with salsa, sliced avocado, and sour cream."
+    ]
+  },
+  {
+    "name": "Tacos with Ground Turkey",
+    "servings": 4,
+    "tags": [
+      "weeknight",
+      "easy",
+      "kid-friendly"
+    ],
+    "source": "starter",
+    "ingredients": [
+      {
+        "name": "ground turkey",
+        "qty": 1,
+        "unit": "lb",
+        "category": "meat",
+        "search_term": "organic ground turkey"
+      },
+      {
+        "name": "taco seasoning",
+        "qty": 1,
+        "unit": "packet",
+        "category": "pantry",
+        "search_term": "365 taco seasoning"
+      },
+      {
+        "name": "taco shells",
+        "qty": 1,
+        "unit": "box",
+        "category": "pantry",
+        "search_term": "365 crunchy taco shells"
+      },
+      {
+        "name": "shredded lettuce",
+        "qty": 2,
+        "unit": "cup",
+        "category": "produce",
+        "search_term": "organic romaine hearts"
+      },
+      {
+        "name": "tomato",
+        "qty": 2,
+        "unit": "whole",
+        "category": "produce",
+        "search_term": "organic roma tomatoes"
+      },
+      {
+        "name": "shredded cheddar cheese",
+        "qty": 1,
+        "unit": "cup",
+        "category": "dairy",
+        "search_term": "365 shredded cheddar cheese"
+      },
+      {
+        "name": "sour cream",
+        "qty": 0.5,
+        "unit": "cup",
+        "category": "dairy"
+      },
+      {
+        "name": "lime",
+        "qty": 1,
+        "unit": "whole",
+        "category": "produce"
+      }
+    ],
+    "steps": [
+      "Brown ground turkey in a skillet over medium-high heat, breaking it up as it cooks.",
+      "Add taco seasoning and water per packet instructions. Simmer 5 minutes.",
+      "Warm taco shells in the oven.",
+      "Dice tomatoes and shred lettuce.",
+      "Serve turkey in shells with toppings and a squeeze of lime."
+    ]
+  },
+  {
+    "name": "Alison Roman's Spiced Chickpea Stew with Coconut and Turmeric",
+    "servings": 4,
+    "tags": [],
+    "source": "google-doc",
+    "ingredients": [
+      {
+        "name": "olive oil, plus more for serving",
+        "qty": 0.25,
+        "unit": "cup",
+        "category": "pantry"
+      },
+      {
+        "name": "garlic cloves, chopped",
+        "qty": 4,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "large yellow onion, chopped",
+        "qty": 1,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "(2-inch) piece ginger, finely chopped",
+        "qty": 1,
+        "unit": "whole",
+        "category": "produce"
+      },
+      {
+        "name": "kosher salt",
+        "qty": 1,
+        "unit": "whole",
+        "category": "pantry"
+      },
+      {
+        "name": "black pepper",
+        "qty": 1,
+        "unit": "whole",
+        "category": "pantry"
+      },
+      {
+        "name": "1/2 tsp ground turmeric, plus more for serving",
+        "qty": 1,
+        "unit": "whole",
+        "category": "pantry"
+      },
+      {
+        "name": "red pepper flakes, plus more for serving",
+        "qty": 1,
+        "unit": "tsp",
+        "category": "pantry"
+      },
+      {
+        "name": "(15-oz) cans chickpeas, drained and rinsed",
+        "qty": 2,
+        "unit": "whole",
+        "category": "canned",
+        "search_term": "chickpeas canned"
+      },
+      {
+        "name": "(13.5-oz) cans full-fat coconut milk",
+        "qty": 2,
+        "unit": "whole",
+        "category": "canned",
+        "search_term": "coconut milk full fat"
+      },
+      {
+        "name": "vegetable or chicken stock",
+        "qty": 1,
+        "unit": "cup",
+        "category": "pantry",
+        "search_term": "vegetable broth"
+      },
+      {
+        "name": "swiss chard, kale, or collard greens, stems removed, torn into bite-size pieces",
+        "qty": 1,
+        "unit": "bunch",
+        "category": "produce",
+        "search_term": "Swiss chard"
+      },
+      {
+        "name": "small bunch fresh mint",
+        "qty": 1,
+        "unit": "whole",
+        "category": "produce",
+        "search_term": "fresh mint"
+      },
+      {
+        "name": "yogurt, for serving (optional)",
+        "qty": 1,
+        "unit": "whole",
+        "category": "dairy"
+      },
+      {
+        "name": "toasted pita or flatbread, for serving (optional)",
+        "qty": 1,
+        "unit": "whole",
+        "category": "bakery",
+        "search_term": "pita bread"
+      }
+    ],
+    "steps": [
+      "Heat 1/4 cup oil in a large pot over medium. Add garlic, onion, and ginger. Season with salt and pepper. Cook, stirring occasionally, until onion is translucent and starting to brown at the edges, 3-5 minutes.",
+      "Add turmeric, red pepper flakes, and chickpeas. Season with salt and pepper. Cook, stirring frequently, so the chickpeas sizzle and fry in the spices and oil until they start to break down and get browned and crisp, 8-10 minutes. Remove about a cup of chickpeas and set aside for garnish.",
+      "Using a wooden spoon, crush the remaining chickpeas slightly to release their starchy insides (this thickens the stew). Add coconut milk and stock. Season with salt and pepper.",
+      "Bring to a simmer, scraping up any bits on the bottom of the pot. Cook, stirring occasionally, until stew has thickened, 30-35 minutes. Keep simmering longer if you want it thicker.",
+      "Add greens and stir, making sure they're submerged. Cook until wilted and softened, 3-7 minutes (chard/spinach faster, kale/collards slower). Season again with salt and pepper.",
+      "Divide among bowls and top with mint, reserved crispy chickpeas, a sprinkle of red pepper flakes, and a good drizzle of olive oil. Serve with yogurt and toasted pita if using. Dust the yogurt with turmeric if you'd like."
+    ]
+  }
+]

@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="default">
+  <meta name="apple-mobile-web-app-title" content="Groceries">
+  <title>Groceries</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f5f5f5;
+      color: #222;
+      font-size: 17px;
+      line-height: 1.4;
+      min-height: 100vh;
+      padding-bottom: env(safe-area-inset-bottom, 0);
+    }
+
+    /* --- Header --- */
+    .header {
+      background: #fff;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      border-bottom: 1px solid #e0e0e0;
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header h1 {
+      font-size: 22px;
+      font-weight: 700;
+    }
+
+    .header-btn {
+      background: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+    }
+
+    .header-btn:active {
+      opacity: 0.7;
+    }
+
+    .header-btn.secondary {
+      background: transparent;
+      color: #007aff;
+      padding: 10px 8px;
+    }
+
+    .back-btn {
+      background: transparent;
+      color: #007aff;
+      border: none;
+      font-size: 17px;
+      font-weight: 600;
+      cursor: pointer;
+      min-height: 44px;
+      padding: 10px 8px;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .back-btn:active {
+      opacity: 0.7;
+    }
+
+    /* --- Screen container --- */
+    .screen {
+      display: none;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    /* --- Recipe list --- */
+    .recipe-list {
+      padding: 8px 0;
+    }
+
+    .recipe-item {
+      background: #fff;
+      margin: 0 12px 8px;
+      border-radius: 12px;
+      padding: 16px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      transition: background 0.15s;
+      min-height: 64px;
+    }
+
+    .recipe-item:active {
+      background: #f0f0f0;
+    }
+
+    .recipe-item.selected {
+      background: #e8f4fd;
+      border: 2px solid #007aff;
+      padding: 14px 18px;
+    }
+
+    .recipe-check {
+      width: 28px;
+      height: 28px;
+      border: 2px solid #ccc;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: transparent;
+    }
+
+    .recipe-item.selected .recipe-check {
+      background: #007aff;
+      border-color: #007aff;
+      color: #fff;
+    }
+
+    .recipe-info {
+      flex: 1;
+    }
+
+    .recipe-name {
+      font-size: 17px;
+      font-weight: 600;
+    }
+
+    .recipe-meta {
+      font-size: 14px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    /* --- Bottom action bar --- */
+    .action-bar {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      padding: 12px 20px;
+      padding-bottom: calc(12px + env(safe-area-inset-bottom, 0));
+      background: #fff;
+      border-top: 1px solid #e0e0e0;
+      z-index: 10;
+    }
+
+    .action-btn {
+      width: 100%;
+      background: #007aff;
+      color: #fff;
+      border: none;
+      border-radius: 14px;
+      padding: 16px;
+      font-size: 18px;
+      font-weight: 700;
+      cursor: pointer;
+      min-height: 56px;
+    }
+
+    .action-btn:active {
+      opacity: 0.8;
+    }
+
+    .action-btn:disabled {
+      background: #ccc;
+      cursor: default;
+    }
+
+    .action-btn .sub {
+      font-size: 14px;
+      font-weight: 400;
+      opacity: 0.8;
+      display: block;
+      margin-top: 2px;
+    }
+
+    /* --- Ingredient list --- */
+    .ingredient-list {
+      padding: 8px 0 120px;
+    }
+
+    .category-header {
+      font-size: 13px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: #888;
+      padding: 16px 20px 6px;
+    }
+
+    .ingredient-item {
+      background: #fff;
+      margin: 0 12px 1px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      cursor: pointer;
+      min-height: 52px;
+    }
+
+    .ingredient-item:first-of-type {
+      border-radius: 12px 12px 0 0;
+    }
+
+    .ingredient-item:last-of-type {
+      border-radius: 0 0 12px 12px;
+      margin-bottom: 8px;
+    }
+
+    .ingredient-item:only-of-type {
+      border-radius: 12px;
+    }
+
+    .ingredient-item:active {
+      background: #f0f0f0;
+    }
+
+    .ing-checkbox {
+      width: 26px;
+      height: 26px;
+      border: 2px solid #ccc;
+      border-radius: 6px;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+      color: transparent;
+    }
+
+    .ingredient-item.checked .ing-checkbox {
+      background: #007aff;
+      border-color: #007aff;
+      color: #fff;
+    }
+
+    .ingredient-item.staple {
+      opacity: 0.5;
+    }
+
+    .ingredient-item.staple.checked {
+      opacity: 1;
+    }
+
+    .ing-text {
+      flex: 1;
+      font-size: 17px;
+    }
+
+    .ing-qty {
+      font-weight: 600;
+    }
+
+    .staple-label {
+      font-size: 13px;
+      color: #999;
+      margin-left: 4px;
+    }
+
+    /* --- Loading / empty states --- */
+    .loading, .empty-state {
+      text-align: center;
+      padding: 60px 20px;
+      color: #888;
+      font-size: 17px;
+    }
+
+    .loading::after {
+      content: "";
+      display: inline-block;
+      width: 20px;
+      height: 20px;
+      border: 2px solid #ccc;
+      border-top-color: #007aff;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin-left: 8px;
+      vertical-align: middle;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* --- Sync status toast --- */
+    .toast {
+      position: fixed;
+      top: 80px;
+      left: 20px;
+      right: 20px;
+      background: #333;
+      color: #fff;
+      padding: 14px 20px;
+      border-radius: 12px;
+      font-size: 15px;
+      z-index: 100;
+      text-align: center;
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: opacity 0.3s, transform 0.3s;
+      pointer-events: none;
+    }
+
+    .toast.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.error {
+      background: #d32f2f;
+    }
+
+    /* --- Order status placeholder --- */
+    .placeholder {
+      text-align: center;
+      padding: 80px 20px;
+    }
+
+    .placeholder h2 {
+      font-size: 24px;
+      margin-bottom: 8px;
+    }
+
+    .placeholder p {
+      color: #888;
+      font-size: 17px;
+    }
+
+    /* --- Cozi toggle badge --- */
+    .cozi-toggle {
+      background: #fff;
+      margin: 8px 12px 0;
+      border-radius: 12px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      cursor: pointer;
+      min-height: 56px;
+      border: 2px solid #34a853;
+    }
+
+    .cozi-toggle.off {
+      border-color: #ccc;
+      opacity: 0.5;
+    }
+
+    .cozi-label {
+      font-size: 17px;
+      font-weight: 600;
+      color: #34a853;
+    }
+
+    .cozi-toggle.off .cozi-label {
+      color: #888;
+    }
+
+    .cozi-count {
+      font-size: 15px;
+      color: #888;
+      font-weight: 400;
+    }
+
+    .cozi-check {
+      width: 28px;
+      height: 28px;
+      border: 2px solid #34a853;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: #fff;
+      background: #34a853;
+    }
+
+    .cozi-toggle.off .cozi-check {
+      background: transparent;
+      border-color: #ccc;
+      color: transparent;
+    }
+
+    /* --- Cozi items in ingredient list --- */
+    .cozi-source {
+      font-size: 13px;
+      color: #34a853;
+      margin-left: 4px;
+      font-weight: 500;
+    }
+
+    .category-header.cozi {
+      color: #34a853;
+    }
+
+    /* Space for bottom bar on recipe screen */
+    .recipe-list {
+      padding-bottom: 100px;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Toast notification -->
+  <div id="toast" class="toast"></div>
+
+  <!-- Screen 1: Recipe Picker -->
+  <div id="screen-picker" class="screen active">
+    <div class="header">
+      <h1>Groceries</h1>
+      <button class="header-btn" id="sync-btn" onclick="syncRecipes()">Sync</button>
+    </div>
+    <div id="cozi-toggle" class="cozi-toggle" onclick="toggleCozi()" style="display:none">
+      <div>
+        <span class="cozi-label">Cozi List</span>
+        <span class="cozi-count" id="cozi-count"></span>
+      </div>
+      <div class="cozi-check">&#10003;</div>
+    </div>
+    <div id="recipe-list" class="recipe-list">
+      <div class="loading">Loading recipes</div>
+    </div>
+    <div class="action-bar">
+      <button class="action-btn" id="review-btn" disabled onclick="showIngredients()">
+        Review Ingredients
+        <span class="sub" id="selected-count">Select recipes above</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen 2: Ingredient List -->
+  <div id="screen-ingredients" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showPicker()">&#8592; Back</button>
+      <h1>Ingredients</h1>
+      <div style="width:60px"></div>
+    </div>
+    <div id="ingredient-list" class="ingredient-list">
+      <div class="loading">Merging ingredients</div>
+    </div>
+    <div class="action-bar">
+      <button class="action-btn" disabled>
+        Place Order
+        <span class="sub">Coming soon</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen 3: Order Status (placeholder) -->
+  <div id="screen-order" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showIngredients()">&#8592; Back</button>
+      <h1>Order Status</h1>
+      <div style="width:60px"></div>
+    </div>
+    <div class="placeholder">
+      <h2>Coming Soon</h2>
+      <p>Order placement and real-time<br>status tracking will appear here.</p>
+    </div>
+  </div>
+
+  <script>
+    // --- Config ---
+    const API_KEY = "grocery-secret-key";
+    const headers = { "X-API-Key": API_KEY, "Content-Type": "application/json" };
+
+    // --- State ---
+    let recipes = [];
+    let selectedRecipes = new Set();
+    let coziItems = [];
+    let coziEnabled = true;
+
+    // --- Screen switching ---
+    function showScreen(id) {
+      document.querySelectorAll(".screen").forEach((s) => s.classList.remove("active"));
+      document.getElementById(id).classList.add("active");
+      window.scrollTo(0, 0);
+    }
+
+    function showPicker() {
+      showScreen("screen-picker");
+    }
+
+    function showIngredients() {
+      showScreen("screen-ingredients");
+      loadMergedIngredients();
+    }
+
+    // --- Toast ---
+    function showToast(message, isError) {
+      const toast = document.getElementById("toast");
+      toast.textContent = message;
+      toast.className = "toast visible" + (isError ? " error" : "");
+      setTimeout(() => { toast.className = "toast"; }, 3000);
+    }
+
+    // --- Recipe Picker ---
+    async function loadRecipes() {
+      try {
+        const res = await fetch("/recipes", { headers });
+        const data = await res.json();
+        recipes = data.recipes || [];
+        renderRecipeList();
+      } catch (err) {
+        document.getElementById("recipe-list").innerHTML =
+          '<div class="empty-state">Could not load recipes.<br>Is the server running?</div>';
+      }
+    }
+
+    function renderRecipeList() {
+      const list = document.getElementById("recipe-list");
+      if (recipes.length === 0) {
+        list.innerHTML = '<div class="empty-state">No recipes yet.<br>Tap Sync to pull from Google Doc.</div>';
+        return;
+      }
+
+      list.innerHTML = recipes.map((r, i) => {
+        const sel = selectedRecipes.has(r.name);
+        return `
+          <div class="recipe-item ${sel ? "selected" : ""}" data-index="${i}">
+            <div class="recipe-check">${sel ? "&#10003;" : ""}</div>
+            <div class="recipe-info">
+              <div class="recipe-name">${esc(r.name)}</div>
+              <div class="recipe-meta">${r.ingredientCount} ingredients</div>
+            </div>
+          </div>`;
+      }).join("");
+
+      // Use event delegation instead of inline onclick (avoids quote escaping issues)
+      list.querySelectorAll(".recipe-item").forEach((el) => {
+        el.addEventListener("click", () => {
+          toggleRecipe(recipes[el.dataset.index].name);
+        });
+      });
+
+      updateReviewButton();
+    }
+
+    function toggleRecipe(name) {
+      if (selectedRecipes.has(name)) {
+        selectedRecipes.delete(name);
+      } else {
+        selectedRecipes.add(name);
+      }
+      renderRecipeList();
+    }
+
+    function updateReviewButton() {
+      const btn = document.getElementById("review-btn");
+      const count = selectedRecipes.size;
+      btn.disabled = count === 0;
+      document.getElementById("selected-count").textContent =
+        count === 0 ? "Select recipes above" : count + " selected";
+    }
+
+    // --- Sync ---
+    async function syncRecipes() {
+      const btn = document.getElementById("sync-btn");
+      btn.disabled = true;
+      btn.textContent = "Syncing...";
+      try {
+        const res = await fetch("/sync", { method: "POST", headers });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.message);
+          await loadRecipes();
+        } else {
+          showToast(data.error || "Sync failed", true);
+        }
+      } catch (err) {
+        showToast("Sync failed: " + err.message, true);
+      }
+      btn.disabled = false;
+      btn.textContent = "Sync";
+    }
+
+    // --- Ingredient List ---
+    async function loadMergedIngredients() {
+      const list = document.getElementById("ingredient-list");
+      list.innerHTML = '<div class="loading">Merging ingredients</div>';
+
+      try {
+        const res = await fetch("/merge", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({
+            recipes: Array.from(selectedRecipes),
+            includeCozi: coziEnabled,
+          }),
+        });
+        const data = await res.json();
+        renderIngredients(data.groups || []);
+      } catch (err) {
+        list.innerHTML = '<div class="empty-state">Failed to load ingredients.</div>';
+      }
+    }
+
+    function renderIngredients(groups) {
+      const list = document.getElementById("ingredient-list");
+      if (groups.length === 0) {
+        list.innerHTML = '<div class="empty-state">No ingredients found.</div>';
+        return;
+      }
+
+      let html = "";
+      for (const group of groups) {
+        const isCozi = group.items[0] && group.items[0].source === "cozi";
+        html += `<div class="category-header${isCozi ? " cozi" : ""}">${esc(group.category)}</div>`;
+        for (const item of group.items) {
+          if (item.source === "cozi") {
+            // Cozi items: always checked, no qty, show (Cozi) label
+            html += `
+              <div class="ingredient-item checked" onclick="toggleIngredient(this)" data-cozi-item-id="${item.itemId}" data-cozi-list-id="${item.listId}">
+                <div class="ing-checkbox">&#10003;</div>
+                <div class="ing-text">
+                  ${esc(item.name)}<span class="cozi-source">(Cozi)</span>
+                </div>
+              </div>`;
+          } else {
+            const checked = !item.isStaple;
+            const cls = (checked ? "checked" : "") + (item.isStaple ? " staple" : "");
+            const qtyStr = formatQty(item.qty, item.unit);
+            html += `
+              <div class="ingredient-item ${cls}" onclick="toggleIngredient(this)">
+                <div class="ing-checkbox">${checked ? "&#10003;" : ""}</div>
+                <div class="ing-text">
+                  <span class="ing-qty">${qtyStr}</span> ${esc(item.name)}${item.isStaple ? '<span class="staple-label">(staple)</span>' : ""}
+                </div>
+              </div>`;
+          }
+        }
+      }
+      list.innerHTML = html;
+    }
+
+    function toggleIngredient(el) {
+      el.classList.toggle("checked");
+      const cb = el.querySelector(".ing-checkbox");
+      cb.innerHTML = el.classList.contains("checked") ? "&#10003;" : "";
+    }
+
+    function formatQty(qty, unit) {
+      if (!qty) return "";
+      const q = Number.isInteger(qty) ? qty : parseFloat(qty.toFixed(2));
+      if (unit === "whole") return q;
+      return q + " " + unit;
+    }
+
+    // --- Helpers ---
+    function esc(str) {
+      const el = document.createElement("span");
+      el.textContent = str;
+      return el.innerHTML;
+    }
+
+    // --- Cozi ---
+    async function loadCoziCount() {
+      try {
+        const res = await fetch("/cozi", { headers });
+        const data = await res.json();
+        coziItems = data.items || [];
+        const toggle = document.getElementById("cozi-toggle");
+        const count = document.getElementById("cozi-count");
+        if (coziItems.length > 0) {
+          count.textContent = coziItems.length + " item" + (coziItems.length === 1 ? "" : "s");
+          toggle.style.display = "flex";
+        } else {
+          toggle.style.display = "none";
+        }
+      } catch (err) {
+        // Cozi not available — just hide the toggle
+        document.getElementById("cozi-toggle").style.display = "none";
+      }
+    }
+
+    function toggleCozi() {
+      coziEnabled = !coziEnabled;
+      const toggle = document.getElementById("cozi-toggle");
+      const check = toggle.querySelector(".cozi-check");
+      if (coziEnabled) {
+        toggle.classList.remove("off");
+        check.innerHTML = "&#10003;";
+      } else {
+        toggle.classList.add("off");
+        check.innerHTML = "";
+      }
+    }
+
+    // --- Init ---
+    loadRecipes();
+    loadCoziCount();
+  </script>
+</body>
+</html>
