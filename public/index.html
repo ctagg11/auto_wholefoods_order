@@ -334,20 +334,132 @@
       background: #d32f2f;
     }
 
-    /* --- Order status placeholder --- */
-    .placeholder {
-      text-align: center;
-      padding: 80px 20px;
+    /* --- Order progress --- */
+    .order-progress {
+      padding: 20px 20px 8px;
     }
 
-    .placeholder h2 {
-      font-size: 24px;
+    .progress-bar {
+      height: 8px;
+      background: #e0e0e0;
+      border-radius: 4px;
+      overflow: hidden;
+    }
+
+    .progress-fill {
+      height: 100%;
+      background: #007aff;
+      border-radius: 4px;
+      width: 0%;
+      transition: width 0.4s ease;
+    }
+
+    .progress-text {
+      font-size: 15px;
+      color: #888;
+      margin-top: 8px;
+      text-align: center;
+    }
+
+    /* --- Order item list --- */
+    .order-items {
+      padding: 8px 0 120px;
+    }
+
+    .order-item {
+      background: #fff;
+      margin: 0 12px 1px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      min-height: 48px;
+    }
+
+    .order-item:first-child { border-radius: 12px 12px 0 0; }
+    .order-item:last-child { border-radius: 0 0 12px 12px; margin-bottom: 8px; }
+    .order-item:only-child { border-radius: 12px; }
+
+    .order-icon {
+      width: 24px;
+      height: 24px;
+      flex-shrink: 0;
+      text-align: center;
+      font-size: 16px;
+      line-height: 24px;
+    }
+
+    .order-icon.searching { color: #007aff; }
+    .order-icon.added { color: #34a853; }
+    .order-icon.not-found { color: #d32f2f; }
+    .order-icon.pending { color: #ccc; }
+
+    .order-item-name {
+      flex: 1;
+      font-size: 16px;
+    }
+
+    .order-item-detail {
+      font-size: 13px;
+      color: #888;
+      margin-top: 2px;
+    }
+
+    /* --- Login prompt --- */
+    .login-prompt {
+      text-align: center;
+      padding: 40px 20px;
+    }
+
+    .login-prompt p {
+      font-size: 17px;
+      color: #555;
+      margin-bottom: 20px;
+      line-height: 1.5;
+    }
+
+    /* --- Order summary --- */
+    .order-summary {
+      padding: 20px;
+    }
+
+    .summary-card {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .summary-card h2 {
+      font-size: 22px;
       margin-bottom: 8px;
     }
 
-    .placeholder p {
+    .summary-card p {
       color: #888;
-      font-size: 17px;
+      font-size: 16px;
+      margin-bottom: 16px;
+    }
+
+    .summary-card .not-found-list {
+      text-align: left;
+      background: #fff3f3;
+      border-radius: 8px;
+      padding: 12px 16px;
+      margin-top: 12px;
+      font-size: 15px;
+      color: #d32f2f;
+    }
+
+    .summary-card .not-found-list div {
+      padding: 4px 0;
+    }
+
+    .review-hint {
+      font-size: 15px;
+      color: #007aff;
+      font-weight: 600;
+      margin-top: 16px;
     }
 
     /* --- Cozi toggle badge --- */
@@ -463,24 +575,30 @@
       <div class="loading">Merging ingredients</div>
     </div>
     <div class="action-bar">
-      <button class="action-btn" disabled>
+      <button class="action-btn" id="place-order-btn" onclick="placeOrder()">
         Place Order
-        <span class="sub">Coming soon</span>
+        <span class="sub" id="order-sub">Review cart before checkout</span>
       </button>
     </div>
   </div>
 
-  <!-- Screen 3: Order Status (placeholder) -->
+  <!-- Screen 3: Order Status -->
   <div id="screen-order" class="screen">
     <div class="header">
-      <button class="back-btn" onclick="showIngredients()">&#8592; Back</button>
-      <h1>Order Status</h1>
+      <button class="back-btn" id="order-back-btn" onclick="showIngredients()">&#8592; Back</button>
+      <h1>Ordering</h1>
       <div style="width:60px"></div>
     </div>
-    <div class="placeholder">
-      <h2>Coming Soon</h2>
-      <p>Order placement and real-time<br>status tracking will appear here.</p>
+    <div class="order-progress">
+      <div class="progress-bar"><div class="progress-fill" id="progress-fill"></div></div>
+      <div class="progress-text" id="progress-text">Starting...</div>
     </div>
+    <div id="order-items" class="order-items"></div>
+    <div id="login-prompt" class="login-prompt" style="display:none">
+      <p>Please log into Amazon in the browser window on your Mac, then tap the button below.</p>
+      <button class="action-btn" onclick="continueOrder()">I've Logged In — Continue</button>
+    </div>
+    <div id="order-summary" class="order-summary" style="display:none"></div>
   </div>
 
   <script>
@@ -493,6 +611,8 @@
     let selectedRecipes = new Set();
     let coziItems = [];
     let coziEnabled = true;
+    let mergedItems = []; // flat list of all ingredients from merge
+    let orderEventSource = null; // SSE connection for order updates
 
     // --- Screen switching ---
     function showScreen(id) {
@@ -626,15 +746,17 @@
         return;
       }
 
+      mergedItems = [];
+      let idx = 0;
       let html = "";
       for (const group of groups) {
         const isCozi = group.items[0] && group.items[0].source === "cozi";
         html += `<div class="category-header${isCozi ? " cozi" : ""}">${esc(group.category)}</div>`;
         for (const item of group.items) {
+          mergedItems.push(item);
           if (item.source === "cozi") {
-            // Cozi items: always checked, no qty, show (Cozi) label
             html += `
-              <div class="ingredient-item checked" onclick="toggleIngredient(this)" data-cozi-item-id="${item.itemId}" data-cozi-list-id="${item.listId}">
+              <div class="ingredient-item checked" onclick="toggleIngredient(this)" data-idx="${idx}" data-cozi-item-id="${item.itemId}" data-cozi-list-id="${item.listId}">
                 <div class="ing-checkbox">&#10003;</div>
                 <div class="ing-text">
                   ${esc(item.name)}<span class="cozi-source">(Cozi)</span>
@@ -645,22 +767,35 @@
             const cls = (checked ? "checked" : "") + (item.isStaple ? " staple" : "");
             const qtyStr = formatQty(item.qty, item.unit);
             html += `
-              <div class="ingredient-item ${cls}" onclick="toggleIngredient(this)">
+              <div class="ingredient-item ${cls}" onclick="toggleIngredient(this)" data-idx="${idx}">
                 <div class="ing-checkbox">${checked ? "&#10003;" : ""}</div>
                 <div class="ing-text">
                   <span class="ing-qty">${qtyStr}</span> ${esc(item.name)}${item.isStaple ? '<span class="staple-label">(staple)</span>' : ""}
                 </div>
               </div>`;
           }
+          idx++;
         }
       }
       list.innerHTML = html;
+      updatePlaceOrderButton();
     }
 
     function toggleIngredient(el) {
       el.classList.toggle("checked");
       const cb = el.querySelector(".ing-checkbox");
       cb.innerHTML = el.classList.contains("checked") ? "&#10003;" : "";
+      updatePlaceOrderButton();
+    }
+
+    function updatePlaceOrderButton() {
+      const checked = document.querySelectorAll("#ingredient-list .ingredient-item.checked").length;
+      const btn = document.getElementById("place-order-btn");
+      if (btn) {
+        btn.disabled = checked === 0;
+        document.getElementById("order-sub").textContent =
+          checked === 0 ? "Check items to order" : checked + " items to order";
+      }
     }
 
     function formatQty(qty, unit) {
@@ -707,6 +842,216 @@
       } else {
         toggle.classList.add("off");
         check.innerHTML = "";
+      }
+    }
+
+    // --- Ordering ---
+
+    function placeOrder() {
+      // Collect all checked items
+      const checkedEls = document.querySelectorAll("#ingredient-list .ingredient-item.checked");
+      const items = [];
+      checkedEls.forEach((el) => {
+        const idx = parseInt(el.dataset.idx);
+        if (!isNaN(idx) && mergedItems[idx]) {
+          items.push(mergedItems[idx]);
+        }
+      });
+
+      if (items.length === 0) {
+        showToast("No items checked", true);
+        return;
+      }
+
+      // Switch to order screen
+      showScreen("screen-order");
+      resetOrderUI(items);
+      startOrder(items);
+    }
+
+    function resetOrderUI(items) {
+      document.getElementById("progress-fill").style.width = "0%";
+      document.getElementById("progress-text").textContent = "Starting...";
+      document.getElementById("login-prompt").style.display = "none";
+      document.getElementById("order-summary").style.display = "none";
+      document.getElementById("order-back-btn").onclick = function () {
+        if (confirm("Stop the order and go back?")) {
+          closeOrderSSE();
+          showIngredients();
+        }
+      };
+
+      // Render all items as pending
+      let html = "";
+      for (const item of items) {
+        html += `
+          <div class="order-item" id="order-item-${items.indexOf(item)}">
+            <div class="order-icon pending">&#9679;</div>
+            <div>
+              <div class="order-item-name">${esc(item.name)}</div>
+            </div>
+          </div>`;
+      }
+      document.getElementById("order-items").innerHTML = html;
+    }
+
+    async function startOrder(items) {
+      // Start the order on the server
+      try {
+        const res = await fetch("/order/start", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ items }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.error || "Failed to start order", true);
+          return;
+        }
+      } catch (err) {
+        showToast("Server error: " + err.message, true);
+        return;
+      }
+
+      // Open SSE connection for real-time updates
+      openOrderSSE();
+    }
+
+    function openOrderSSE() {
+      closeOrderSSE();
+      orderEventSource = new EventSource("/order/events?key=" + encodeURIComponent(API_KEY));
+
+      orderEventSource.addEventListener("status", (e) => {
+        const data = JSON.parse(e.data);
+        handleOrderStatus(data);
+      });
+
+      orderEventSource.addEventListener("item", (e) => {
+        const data = JSON.parse(e.data);
+        handleItemUpdate(data);
+      });
+
+      orderEventSource.onerror = () => {
+        // SSE auto-reconnects, just log
+        console.log("SSE connection error, reconnecting...");
+      };
+    }
+
+    function closeOrderSSE() {
+      if (orderEventSource) {
+        orderEventSource.close();
+        orderEventSource = null;
+      }
+    }
+
+    function handleOrderStatus(data) {
+      const progressText = document.getElementById("progress-text");
+      progressText.textContent = data.message;
+
+      if (data.phase === "login-needed") {
+        document.getElementById("login-prompt").style.display = "block";
+        document.getElementById("progress-fill").style.width = "0%";
+      }
+
+      if (data.phase === "ordering") {
+        document.getElementById("login-prompt").style.display = "none";
+      }
+
+      if (data.phase === "complete") {
+        document.getElementById("progress-fill").style.width = "100%";
+        closeOrderSSE();
+        showOrderSummary(data);
+      }
+
+      if (data.phase === "error") {
+        document.getElementById("progress-fill").style.width = "0%";
+        progressText.textContent = data.message;
+        closeOrderSSE();
+        // Let user go back freely
+        document.getElementById("order-back-btn").onclick = function () {
+          showIngredients();
+        };
+      }
+    }
+
+    function handleItemUpdate(data) {
+      const el = document.getElementById("order-item-" + data.index);
+      if (!el) return;
+
+      const icon = el.querySelector(".order-icon");
+      const nameDiv = el.querySelector(".order-item-name");
+
+      if (data.status === "searching") {
+        icon.className = "order-icon searching";
+        icon.innerHTML = "&#8987;"; // hourglass
+      } else if (data.status === "added") {
+        icon.className = "order-icon added";
+        icon.innerHTML = "&#10003;"; // checkmark
+        if (data.product) {
+          let detail = el.querySelector(".order-item-detail");
+          if (!detail) {
+            detail = document.createElement("div");
+            detail.className = "order-item-detail";
+            nameDiv.parentNode.appendChild(detail);
+          }
+          detail.textContent = data.product;
+        }
+      } else if (data.status === "not_found" || data.status === "error") {
+        icon.className = "order-icon not-found";
+        icon.innerHTML = "&#10007;"; // X mark
+        let detail = el.querySelector(".order-item-detail");
+        if (!detail) {
+          detail = document.createElement("div");
+          detail.className = "order-item-detail";
+          nameDiv.parentNode.appendChild(detail);
+        }
+        detail.textContent = data.reason || "Not found";
+      }
+
+      // Update progress bar
+      const pct = Math.round(((data.index + 1) / data.total) * 100);
+      document.getElementById("progress-fill").style.width = pct + "%";
+      document.getElementById("progress-text").textContent =
+        `${data.index + 1} of ${data.total} items...`;
+    }
+
+    function showOrderSummary(data) {
+      const summary = document.getElementById("order-summary");
+      let html = '<div class="summary-card">';
+      html += `<h2>${data.added} of ${data.total} Added</h2>`;
+      html += `<p>Items have been added to your Amazon Whole Foods cart.</p>`;
+
+      if (data.notFound && data.notFound.length > 0) {
+        html += '<div class="not-found-list"><strong>Could not find:</strong>';
+        for (const item of data.notFound) {
+          html += `<div>&#8226; ${esc(item.name)}</div>`;
+        }
+        html += "</div>";
+      }
+
+      html += '<div class="review-hint">Go to your Mac to review the cart and check out.</div>';
+      html += "</div>";
+      summary.innerHTML = html;
+      summary.style.display = "block";
+
+      // Let user go back freely now
+      document.getElementById("order-back-btn").onclick = function () {
+        showIngredients();
+      };
+    }
+
+    async function continueOrder() {
+      document.getElementById("login-prompt").style.display = "none";
+      document.getElementById("progress-text").textContent = "Checking login...";
+
+      try {
+        const res = await fetch("/order/continue", { method: "POST", headers });
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.error || "Could not continue", true);
+        }
+      } catch (err) {
+        showToast("Server error: " + err.message, true);
       }
     }
 

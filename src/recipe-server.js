@@ -4,6 +4,10 @@ const path = require("path");
 const fs = require("fs");
 const { syncFromGoogleDoc, loadRecipes, loadPantryStaples } = require("./doc-sync");
 const { getShoppingList, markItemsDone, resetClient } = require("./cozi-pull");
+const { getOrderPlacer } = require("./order-placer");
+
+// SSE clients listening for order updates
+let sseClients = [];
 
 const app = express();
 const PORT = 3456;
@@ -202,6 +206,91 @@ app.post("/merge", authCheck, async (req, res) => {
   }
 });
 
+// --- Order endpoints ---
+
+// SSE stream for real-time order updates (uses query param for auth)
+app.get("/order/events", (req, res) => {
+  const key = req.query.key;
+  if (!key || key !== getApiKey()) {
+    return res.status(401).json({ error: "Invalid key" });
+  }
+
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+  });
+  res.write(":\n\n"); // SSE comment to keep connection alive
+
+  sseClients.push(res);
+  console.log(`SSE client connected (${sseClients.length} total)`);
+
+  req.on("close", () => {
+    sseClients = sseClients.filter((c) => c !== res);
+    console.log(`SSE client disconnected (${sseClients.length} total)`);
+  });
+});
+
+// Broadcast an SSE event to all connected clients
+function broadcast(event, data) {
+  const msg = `event: ${event}\ndata: ${JSON.stringify(data)}\n\n`;
+  for (const client of sseClients) {
+    client.write(msg);
+  }
+}
+
+// Wire up OrderPlacer events to SSE broadcast
+function wireOrderEvents(placer) {
+  // Remove old listeners to avoid duplicates
+  placer.removeAllListeners("status");
+  placer.removeAllListeners("item");
+  placer.on("status", (data) => broadcast("status", data));
+  placer.on("item", (data) => broadcast("item", data));
+}
+
+// POST /order/start — begin adding items to Whole Foods cart
+app.post("/order/start", authCheck, async (req, res) => {
+  const { items } = req.body;
+  if (!Array.isArray(items) || items.length === 0) {
+    return res.status(400).json({ error: 'Send { items: [{ name, search_term }] }' });
+  }
+
+  const placer = getOrderPlacer();
+  if (placer.state === "running") {
+    return res.status(409).json({ error: "An order is already in progress" });
+  }
+
+  wireOrderEvents(placer);
+  res.json({ success: true, message: `Starting order with ${items.length} items` });
+
+  // Start async — results stream via SSE
+  placer.startOrder(items);
+});
+
+// POST /order/continue — resume after Amazon login
+app.post("/order/continue", authCheck, async (req, res) => {
+  const placer = getOrderPlacer();
+  if (placer.state !== "login-needed") {
+    return res.status(400).json({ error: "No order waiting for login" });
+  }
+
+  wireOrderEvents(placer);
+  res.json({ success: true, message: "Continuing order..." });
+
+  placer.continueAfterLogin();
+});
+
+// GET /order/status — poll current order state (fallback if SSE drops)
+app.get("/order/status", authCheck, (req, res) => {
+  const placer = getOrderPlacer();
+  res.json({
+    state: placer.state,
+    itemsTotal: placer.items.length,
+    itemsDone: placer.results.length,
+    results: placer.results,
+  });
+});
+
 // Health check (no auth needed)
 app.get("/health", (req, res) => {
   res.json({ status: "ok", recipes: loadRecipes().length });
@@ -224,6 +313,10 @@ https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
   console.log(`  POST /merge           — Merge ingredients from selected recipes`);
   console.log(`  GET  /cozi            — Fetch Cozi shopping list`);
   console.log(`  POST /cozi/done       — Mark Cozi items as done`);
+  console.log(`  POST /order/start     — Start adding items to Whole Foods cart`);
+  console.log(`  POST /order/continue  — Resume after Amazon login`);
+  console.log(`  GET  /order/events    — Real-time order status (SSE)`);
+  console.log(`  GET  /order/status    — Poll order state`);
   console.log(`\nPhone: https://10.0.0.167:${PORT}`);
   console.log(`All endpoints except /health require X-API-Key header`);
 });

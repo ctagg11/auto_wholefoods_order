@@ -1,5 +1,7 @@
 node_modules/
 config/secrets.json
 config/certs/
+config/chrome-data/
 .DS_Store
 uploads/
+orders/*.json
