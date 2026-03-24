@@ -1,5 +1,5 @@
 const express = require("express");
-const https = require("https");
+const http = require("http");
 const path = require("path");
 const fs = require("fs");
 const { syncFromGoogleDoc, loadRecipes, loadPantryStaples } = require("./doc-sync");
@@ -564,15 +564,9 @@ app.post("/recipes/save", authCheck, (req, res) => {
   res.json({ success: true, total: recipes.length, updated: existing >= 0 });
 });
 
-// Start HTTPS server (Safari on iPhone forces https://)
-const certDir = path.join(__dirname, "..", "config", "certs");
-const sslOptions = {
-  key: fs.readFileSync(path.join(certDir, "key.pem")),
-  cert: fs.readFileSync(path.join(certDir, "cert.pem")),
-};
-
-https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
-  console.log(`Grocery server running on https://localhost:${PORT}`);
+// Start HTTP server (local network — no certs needed for private IPs)
+http.createServer(app).listen(PORT, "0.0.0.0", () => {
+  console.log(`Grocery server running on http://localhost:${PORT}`);
   console.log(`Endpoints:`);
   console.log(`  GET  /health          — Health check (no auth)`);
   console.log(`  GET  /recipes         — List all recipes`);
@@ -593,7 +587,7 @@ https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
   console.log(`  POST /recipes/import  — Import recipe from URL`);
   console.log(`  POST /recipes/save    — Save imported recipe`);
   console.log(`  Engine: ${USE_CLAUDE ? "Claude Code" : "Puppeteer (legacy)"}`);
-  console.log(`\nPhone: https://10.0.0.167:${PORT}`);
+  console.log(`\nPhone: http://10.0.0.167:${PORT}`);
   console.log(`All endpoints except /health require X-API-Key header`);
 });
 
