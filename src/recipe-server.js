@@ -4,7 +4,11 @@ const path = require("path");
 const fs = require("fs");
 const { syncFromGoogleDoc, loadRecipes, loadPantryStaples } = require("./doc-sync");
 const { getShoppingList, markItemsDone, resetClient } = require("./cozi-pull");
+const { getClaudeOrderer } = require("./claude-orderer");
+// Legacy Puppeteer orderer kept as fallback — switch with USE_CLAUDE_ORDERER=false
 const { getOrderPlacer } = require("./order-placer");
+
+const USE_CLAUDE = process.env.USE_CLAUDE_ORDERER !== "false";
 
 // SSE clients listening for order updates
 let sseClients = [];
@@ -239,13 +243,18 @@ function broadcast(event, data) {
   }
 }
 
-// Wire up OrderPlacer events to SSE broadcast
-function wireOrderEvents(placer) {
+// Get the active orderer (Claude Code or legacy Puppeteer)
+function getActiveOrderer() {
+  return USE_CLAUDE ? getClaudeOrderer() : getOrderPlacer();
+}
+
+// Wire up orderer events to SSE broadcast
+function wireOrderEvents(orderer) {
   // Remove old listeners to avoid duplicates
-  placer.removeAllListeners("status");
-  placer.removeAllListeners("item");
-  placer.on("status", (data) => broadcast("status", data));
-  placer.on("item", (data) => broadcast("item", data));
+  orderer.removeAllListeners("status");
+  orderer.removeAllListeners("item");
+  orderer.on("status", (data) => broadcast("status", data));
+  orderer.on("item", (data) => broadcast("item", data));
 }
 
 // POST /order/start — begin adding items to Whole Foods cart
@@ -255,39 +264,43 @@ app.post("/order/start", authCheck, async (req, res) => {
     return res.status(400).json({ error: 'Send { items: [{ name, search_term }] }' });
   }
 
-  const placer = getOrderPlacer();
-  if (placer.state === "running") {
+  const orderer = getActiveOrderer();
+  if (orderer.state === "running") {
     return res.status(409).json({ error: "An order is already in progress" });
   }
 
-  wireOrderEvents(placer);
-  res.json({ success: true, message: `Starting order with ${items.length} items` });
+  const engine = USE_CLAUDE ? "claude-code" : "puppeteer";
+  console.log(`Starting order with ${items.length} items using ${engine} engine`);
+
+  wireOrderEvents(orderer);
+  res.json({ success: true, message: `Starting order with ${items.length} items`, engine });
 
   // Start async — results stream via SSE
-  placer.startOrder(items);
+  orderer.startOrder(items);
 });
 
 // POST /order/continue — resume after Amazon login
 app.post("/order/continue", authCheck, async (req, res) => {
-  const placer = getOrderPlacer();
-  if (placer.state !== "login-needed") {
+  const orderer = getActiveOrderer();
+  if (orderer.state !== "login-needed") {
     return res.status(400).json({ error: "No order waiting for login" });
   }
 
-  wireOrderEvents(placer);
+  wireOrderEvents(orderer);
   res.json({ success: true, message: "Continuing order..." });
 
-  placer.continueAfterLogin();
+  orderer.continueAfterLogin();
 });
 
 // GET /order/status — poll current order state (fallback if SSE drops)
 app.get("/order/status", authCheck, (req, res) => {
-  const placer = getOrderPlacer();
+  const orderer = getActiveOrderer();
   res.json({
-    state: placer.state,
-    itemsTotal: placer.items.length,
-    itemsDone: placer.results.length,
-    results: placer.results,
+    state: orderer.state,
+    itemsTotal: orderer.items.length,
+    itemsDone: orderer.results.length,
+    results: orderer.results,
+    engine: USE_CLAUDE ? "claude-code" : "puppeteer",
   });
 });
 
