@@ -292,6 +292,25 @@ app.post("/order/continue", authCheck, async (req, res) => {
   orderer.continueAfterLogin();
 });
 
+// POST /order/cancel — stop a running order
+app.post("/order/cancel", authCheck, (req, res) => {
+  const orderer = getActiveOrderer();
+  if (orderer.state !== "running" && orderer.state !== "login-needed") {
+    return res.status(400).json({ error: "No order in progress to cancel" });
+  }
+
+  console.log("Cancelling order...");
+  if (typeof orderer.cancel === "function") {
+    orderer.cancel("Order cancelled from phone.");
+  } else {
+    // Legacy Puppeteer orderer — close the browser
+    orderer.close();
+    orderer.state = "error";
+    orderer.emit("status", { phase: "error", message: "Order cancelled." });
+  }
+  res.json({ success: true, message: "Order cancelled" });
+});
+
 // GET /order/status — poll current order state (fallback if SSE drops)
 app.get("/order/status", authCheck, (req, res) => {
   const orderer = getActiveOrderer();
@@ -327,9 +346,24 @@ https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
   console.log(`  GET  /cozi            — Fetch Cozi shopping list`);
   console.log(`  POST /cozi/done       — Mark Cozi items as done`);
   console.log(`  POST /order/start     — Start adding items to Whole Foods cart`);
+  console.log(`  POST /order/cancel    — Cancel a running order`);
   console.log(`  POST /order/continue  — Resume after Amazon login`);
   console.log(`  GET  /order/events    — Real-time order status (SSE)`);
   console.log(`  GET  /order/status    — Poll order state`);
+  console.log(`  Engine: ${USE_CLAUDE ? "Claude Code" : "Puppeteer (legacy)"}`);
   console.log(`\nPhone: https://10.0.0.167:${PORT}`);
   console.log(`All endpoints except /health require X-API-Key header`);
 });
+
+// Clean up child processes on server shutdown
+function cleanupOnExit() {
+  const orderer = getActiveOrderer();
+  if (typeof orderer.cleanup === "function") {
+    orderer.cleanup();
+  } else if (typeof orderer.close === "function") {
+    orderer.close();
+  }
+}
+
+process.on("SIGTERM", () => { cleanupOnExit(); process.exit(0); });
+process.on("SIGINT", () => { cleanupOnExit(); process.exit(0); });

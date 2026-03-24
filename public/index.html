@@ -876,7 +876,7 @@
       document.getElementById("order-summary").style.display = "none";
       document.getElementById("order-back-btn").onclick = function () {
         if (confirm("Stop the order and go back?")) {
-          closeOrderSSE();
+          cancelOrder();
           showIngredients();
         }
       };
@@ -941,6 +941,16 @@
       if (orderEventSource) {
         orderEventSource.close();
         orderEventSource = null;
+      }
+    }
+
+    async function cancelOrder() {
+      closeOrderSSE();
+      try {
+        await fetch("/order/cancel", { method: "POST", headers });
+      } catch (err) {
+        // Best effort — server might already be done
+        console.log("Cancel request failed:", err.message);
       }
     }
 

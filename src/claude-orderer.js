@@ -6,13 +6,17 @@ const fs = require("fs");
 const ORDERS_DIR = path.join(__dirname, "..", "orders");
 const CHROME_DATA = path.join(__dirname, "..", "config", "chrome-data");
 
+// Max time an order can run before we kill it (10 minutes)
+const ORDER_TIMEOUT_MS = 10 * 60 * 1000;
+
 class ClaudeOrderer extends EventEmitter {
   constructor() {
     super();
-    this.state = "idle"; // idle | running | done | error
+    this.state = "idle"; // idle | running | login-needed | done | error
     this.results = [];
     this.items = [];
     this.process = null;
+    this.timeoutTimer = null;
   }
 
   // Override emit to also log to console (matches OrderPlacer behavior)
@@ -56,11 +60,15 @@ After each item, print EXACTLY one of these status lines to stdout (the brackets
   [NOT_FOUND] item_name → reason
   [ERROR] item_name → error_message
 
+If Amazon asks you to sign in, print this IMMEDIATELY and then exit:
+  [LOGIN_NEEDED]
+
 When all items are processed, print:
   [DONE] X of Y items added
 
 RULES:
 - Do NOT proceed to checkout — stop after adding items to cart
+- If Amazon shows a sign-in page after navigating, print [LOGIN_NEEDED] and stop — do NOT try to log in
 - If a search returns no results, try simplifying the search term (drop adjectives like "organic") and retry once
 - Prefer Whole Foods / 365 brand products when available
 - If "Add to Cart" button is not found with one selector, try others: #add-to-cart-button, #freshAddToCartButton, button[name*="addToCart"], input[name*="addToCart"]
@@ -76,6 +84,7 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
     this.items = items;
     this.results = [];
     this.state = "running";
+    this.clearTimeout();
 
     this.emit("status", {
       phase: "launching",
@@ -93,6 +102,12 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
       cwd: path.join(__dirname, ".."),
       env: { ...process.env },
     });
+
+    // Start timeout timer
+    this.timeoutTimer = setTimeout(() => {
+      console.log("[claude-order] Order timed out after 10 minutes");
+      this.cancel("Order timed out — took longer than 10 minutes. Check Mac terminal.");
+    }, ORDER_TIMEOUT_MS);
 
     let buffer = "";
 
@@ -113,6 +128,7 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
     });
 
     this.process.on("close", (code) => {
+      this.clearTimeout();
       // Process any remaining buffer
       if (buffer.trim()) {
         this.handleStreamLine(buffer.trim());
@@ -121,12 +137,53 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
     });
 
     this.process.on("error", (err) => {
+      this.clearTimeout();
       this.state = "error";
       this.emit("status", {
         phase: "error",
         message: `Failed to start Claude Code: ${err.message}`,
       });
     });
+  }
+
+  // --- Cancel a running order ---
+
+  cancel(reason) {
+    this.clearTimeout();
+    if (this.process) {
+      this.process.kill("SIGTERM");
+      // Force kill after 5 seconds if it doesn't exit
+      const forceKill = setTimeout(() => {
+        if (this.process) {
+          this.process.kill("SIGKILL");
+        }
+      }, 5000);
+      this.process.on("close", () => clearTimeout(forceKill));
+    }
+    this.state = "error";
+    this.emit("status", {
+      phase: "error",
+      message: reason || "Order cancelled.",
+    });
+    this.saveOrder();
+    this.process = null;
+  }
+
+  // --- Cleanup on server shutdown ---
+
+  cleanup() {
+    this.clearTimeout();
+    if (this.process) {
+      this.process.kill("SIGTERM");
+      this.process = null;
+    }
+  }
+
+  clearTimeout() {
+    if (this.timeoutTimer) {
+      clearTimeout(this.timeoutTimer);
+      this.timeoutTimer = null;
+    }
   }
 
   // --- Parse streaming JSON from Claude Code ---
@@ -161,6 +218,17 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
     for (const line of lines) {
       const trimmed = line.trim();
 
+      // [LOGIN_NEEDED]
+      if (trimmed.match(/^\[LOGIN_NEEDED\]/)) {
+        this.clearTimeout();
+        this.state = "login-needed";
+        this.emit("status", {
+          phase: "login-needed",
+          message: "Log into Amazon in the browser on your Mac, then tap Continue.",
+        });
+        continue;
+      }
+
       // [SEARCHING] item_name
       const searchMatch = trimmed.match(/^\[SEARCHING\]\s*(.+)$/);
       if (searchMatch) {
@@ -187,7 +255,10 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
         const name = addedMatch[1].trim();
         const product = addedMatch[2].trim();
         const index = this.findItemIndex(name);
-        this.results.push({ name, found: true, productName: product });
+        // Guard against duplicate results on retry
+        if (!this.hasResult(name)) {
+          this.results.push({ name, found: true, productName: product });
+        }
         if (index >= 0) {
           this.emit("item", {
             index,
@@ -206,7 +277,9 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
         const name = notFoundMatch[1].trim();
         const reason = notFoundMatch[2].trim();
         const index = this.findItemIndex(name);
-        this.results.push({ name, found: false, reason });
+        if (!this.hasResult(name)) {
+          this.results.push({ name, found: false, reason });
+        }
         if (index >= 0) {
           this.emit("item", {
             index,
@@ -225,7 +298,9 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
         const name = errorMatch[1].trim();
         const reason = errorMatch[2].trim();
         const index = this.findItemIndex(name);
-        this.results.push({ name, found: false, reason, error: true });
+        if (!this.hasResult(name)) {
+          this.results.push({ name, found: false, reason, error: true });
+        }
         if (index >= 0) {
           this.emit("item", {
             index,
@@ -245,6 +320,12 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
         continue;
       }
     }
+  }
+
+  // Check if we already have a result for this item (prevents duplicates on retry)
+  hasResult(name) {
+    const lower = name.toLowerCase();
+    return this.results.some((r) => r.name.toLowerCase() === lower);
   }
 
   // --- Find item index by name (fuzzy) ---
@@ -306,13 +387,82 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
     this.process = null;
   }
 
-  // --- Continue after login (not needed with Claude — it can handle login prompts) ---
+  // --- Continue after login — restart Claude session with remaining items ---
 
   async continueAfterLogin() {
-    // Claude Code can handle login interactively, but if needed:
+    if (this.state !== "login-needed") return;
+
+    // Figure out which items haven't been processed yet
+    const remaining = this.items.filter(
+      (item) => !this.hasResult(item.name)
+    );
+
+    if (remaining.length === 0) {
+      this.state = "done";
+      this.emit("status", {
+        phase: "complete",
+        message: "All items were already processed.",
+        added: this.results.filter((r) => r.found).length,
+        total: this.items.length,
+        notFound: this.results.filter((r) => !r.found).map((r) => ({
+          name: r.name,
+          reason: r.reason || "unknown",
+        })),
+      });
+      return;
+    }
+
+    // Restart with remaining items (user has now logged in on Mac)
+    this.state = "running";
     this.emit("status", {
       phase: "ordering",
-      message: "Resuming order...",
+      message: `Resuming — ${remaining.length} items left...`,
+    });
+
+    const prompt = this.buildPrompt(remaining);
+
+    this.process = spawn("claude", [
+      "-p", prompt,
+      "--output-format", "stream-json",
+      "--allowedTools", "Bash,Read,Write,Edit",
+    ], {
+      cwd: path.join(__dirname, ".."),
+      env: { ...process.env },
+    });
+
+    this.timeoutTimer = setTimeout(() => {
+      this.cancel("Order timed out after 10 minutes.");
+    }, ORDER_TIMEOUT_MS);
+
+    let buffer = "";
+
+    this.process.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (line.trim()) this.handleStreamLine(line.trim());
+      }
+    });
+
+    this.process.stderr.on("data", (chunk) => {
+      const text = chunk.toString().trim();
+      if (text) console.log(`[claude-order stderr] ${text}`);
+    });
+
+    this.process.on("close", (code) => {
+      this.clearTimeout();
+      if (buffer.trim()) this.handleStreamLine(buffer.trim());
+      this.finalize(code);
+    });
+
+    this.process.on("error", (err) => {
+      this.clearTimeout();
+      this.state = "error";
+      this.emit("status", {
+        phase: "error",
+        message: `Failed to restart Claude Code: ${err.message}`,
+      });
     });
   }
 
