@@ -281,6 +281,81 @@
       margin-left: 4px;
     }
 
+    /* --- Search term editor --- */
+    .ing-search-hint {
+      display: block;
+      font-size: 13px;
+      color: #007aff;
+      margin-top: 2px;
+    }
+
+    .search-editor {
+      margin: 0 12px 1px;
+      background: #f0f4ff;
+      padding: 12px 20px;
+      border-left: 3px solid #007aff;
+      display: none;
+    }
+
+    .search-editor.open {
+      display: block;
+    }
+
+    .search-editor label {
+      font-size: 13px;
+      color: #666;
+      display: block;
+      margin-bottom: 6px;
+    }
+
+    .search-editor-input {
+      width: 100%;
+      font-size: 16px;
+      padding: 10px 12px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-family: inherit;
+      -webkit-appearance: none;
+    }
+
+    .search-editor-input:focus {
+      outline: none;
+      border-color: #007aff;
+    }
+
+    .search-editor-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 8px;
+      justify-content: flex-end;
+    }
+
+    .search-editor-actions button {
+      font-size: 14px;
+      padding: 6px 16px;
+      border-radius: 6px;
+      border: none;
+      cursor: pointer;
+      font-family: inherit;
+    }
+
+    .search-editor-actions .save-btn {
+      background: #007aff;
+      color: #fff;
+    }
+
+    .search-editor-actions .cancel-btn {
+      background: #e0e0e0;
+      color: #333;
+    }
+
+    .search-editor-actions .reset-btn {
+      background: none;
+      color: #999;
+      font-size: 13px;
+      margin-right: auto;
+    }
+
     /* --- Loading / empty states --- */
     .loading, .empty-state {
       text-align: center;
@@ -754,25 +829,33 @@
         html += `<div class="category-header${isCozi ? " cozi" : ""}">${esc(group.category)}</div>`;
         for (const item of group.items) {
           mergedItems.push(item);
+          const searchTerm = item.search_term || "";
+          const hasCustomSearch = searchTerm && searchTerm.toLowerCase() !== item.name.toLowerCase();
+          const searchHint = hasCustomSearch
+            ? `<span class="ing-search-hint">searches: ${esc(searchTerm)}</span>`
+            : "";
+
           if (item.source === "cozi") {
             html += `
-              <div class="ingredient-item checked" onclick="toggleIngredient(this)" data-idx="${idx}" data-cozi-item-id="${item.itemId}" data-cozi-list-id="${item.listId}">
-                <div class="ing-checkbox">&#10003;</div>
-                <div class="ing-text">
-                  ${esc(item.name)}<span class="cozi-source">(Cozi)</span>
+              <div class="ingredient-item checked" data-idx="${idx}" data-cozi-item-id="${item.itemId}" data-cozi-list-id="${item.listId}">
+                <div class="ing-checkbox" onclick="toggleIngredient(this.parentElement)">&#10003;</div>
+                <div class="ing-text" onclick="openSearchEditor(${idx})">
+                  ${esc(item.name)}<span class="cozi-source">(Cozi)</span>${searchHint}
                 </div>
-              </div>`;
+              </div>
+              <div class="search-editor" id="editor-${idx}"></div>`;
           } else {
             const checked = !item.isStaple;
             const cls = (checked ? "checked" : "") + (item.isStaple ? " staple" : "");
             const qtyStr = formatQty(item.qty, item.unit);
             html += `
-              <div class="ingredient-item ${cls}" onclick="toggleIngredient(this)" data-idx="${idx}">
-                <div class="ing-checkbox">${checked ? "&#10003;" : ""}</div>
-                <div class="ing-text">
-                  <span class="ing-qty">${qtyStr}</span> ${esc(item.name)}${item.isStaple ? '<span class="staple-label">(staple)</span>' : ""}
+              <div class="ingredient-item ${cls}" data-idx="${idx}">
+                <div class="ing-checkbox" onclick="toggleIngredient(this.parentElement)">${checked ? "&#10003;" : ""}</div>
+                <div class="ing-text" onclick="openSearchEditor(${idx})">
+                  <span class="ing-qty">${qtyStr}</span> ${esc(item.name)}${item.isStaple ? '<span class="staple-label">(staple)</span>' : ""}${searchHint}
                 </div>
-              </div>`;
+              </div>
+              <div class="search-editor" id="editor-${idx}"></div>`;
           }
           idx++;
         }
@@ -786,6 +869,124 @@
       const cb = el.querySelector(".ing-checkbox");
       cb.innerHTML = el.classList.contains("checked") ? "&#10003;" : "";
       updatePlaceOrderButton();
+    }
+
+    // --- Search term editor ---
+
+    var activeEditorIdx = null;
+
+    function openSearchEditor(idx) {
+      // Close any open editor
+      if (activeEditorIdx !== null) {
+        const prev = document.getElementById("editor-" + activeEditorIdx);
+        if (prev) { prev.classList.remove("open"); prev.innerHTML = ""; }
+      }
+
+      // If tapping same item, just close
+      if (activeEditorIdx === idx) { activeEditorIdx = null; return; }
+
+      const item = mergedItems[idx];
+      if (!item) return;
+
+      activeEditorIdx = idx;
+      const editor = document.getElementById("editor-" + idx);
+      const currentTerm = item.search_term || item.name;
+      const isOverride = item.search_term_source === "override";
+
+      editor.innerHTML = `
+        <label>Whole Foods search term for "${esc(item.name)}":</label>
+        <input class="search-editor-input" type="text" value="${esc(currentTerm)}"
+               id="search-input-${idx}" autocomplete="off" autocorrect="off" spellcheck="false">
+        <div class="search-editor-actions">
+          ${isOverride ? `<button class="reset-btn" onclick="resetSearchTerm(${idx})">Reset</button>` : ""}
+          <button class="cancel-btn" onclick="closeSearchEditor()">Cancel</button>
+          <button class="save-btn" onclick="saveSearchTerm(${idx})">Save</button>
+        </div>
+      `;
+      editor.classList.add("open");
+
+      // Focus input and select all text
+      setTimeout(() => {
+        const input = document.getElementById("search-input-" + idx);
+        if (input) { input.focus(); input.select(); }
+      }, 50);
+    }
+
+    function closeSearchEditor() {
+      if (activeEditorIdx !== null) {
+        const editor = document.getElementById("editor-" + activeEditorIdx);
+        if (editor) { editor.classList.remove("open"); editor.innerHTML = ""; }
+        activeEditorIdx = null;
+      }
+    }
+
+    async function saveSearchTerm(idx) {
+      const item = mergedItems[idx];
+      const input = document.getElementById("search-input-" + idx);
+      if (!item || !input) return;
+
+      const newTerm = input.value.trim();
+      if (!newTerm) return;
+
+      try {
+        await fetch("/ingredient-map", {
+          method: "PUT",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredient: item.name, search_term: newTerm }),
+        });
+
+        // Update local state
+        item.search_term = newTerm;
+        item.search_term_source = "override";
+
+        // Update the hint text in the ingredient row
+        updateSearchHint(idx, item);
+        closeSearchEditor();
+        showToast("Search term saved");
+      } catch (err) {
+        showToast("Failed to save", true);
+      }
+    }
+
+    async function resetSearchTerm(idx) {
+      const item = mergedItems[idx];
+      if (!item) return;
+
+      try {
+        await fetch("/ingredient-map", {
+          method: "PUT",
+          headers: { ...headers, "Content-Type": "application/json" },
+          body: JSON.stringify({ ingredient: item.name, search_term: "" }),
+        });
+
+        // Clear override — fall back to recipe search_term or name
+        delete item.search_term_source;
+        // We don't know the original recipe search_term anymore, so clear it
+        delete item.search_term;
+
+        updateSearchHint(idx, item);
+        closeSearchEditor();
+        showToast("Reset to default");
+      } catch (err) {
+        showToast("Failed to reset", true);
+      }
+    }
+
+    function updateSearchHint(idx, item) {
+      const row = document.querySelector(`.ingredient-item[data-idx="${idx}"]`);
+      if (!row) return;
+      const textEl = row.querySelector(".ing-text");
+      // Remove old hint
+      const oldHint = textEl.querySelector(".ing-search-hint");
+      if (oldHint) oldHint.remove();
+      // Add new hint if search_term differs from name
+      const st = item.search_term || "";
+      if (st && st.toLowerCase() !== item.name.toLowerCase()) {
+        const hint = document.createElement("span");
+        hint.className = "ing-search-hint";
+        hint.textContent = "searches: " + st;
+        textEl.appendChild(hint);
+      }
     }
 
     function updatePlaceOrderButton() {

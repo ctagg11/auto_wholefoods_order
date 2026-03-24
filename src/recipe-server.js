@@ -10,6 +10,22 @@ const { getOrderPlacer } = require("./order-placer");
 
 const USE_CLAUDE = process.env.USE_CLAUDE_ORDERER !== "false";
 
+const INGREDIENT_MAP_PATH = path.join(__dirname, "..", "config", "ingredient-map.json");
+
+// Load ingredient search term overrides
+function loadIngredientMap() {
+  try {
+    return JSON.parse(fs.readFileSync(INGREDIENT_MAP_PATH, "utf-8"));
+  } catch {
+    return {};
+  }
+}
+
+// Save ingredient search term overrides
+function saveIngredientMap(map) {
+  fs.writeFileSync(INGREDIENT_MAP_PATH, JSON.stringify(map, null, 2) + "\n");
+}
+
 // SSE clients listening for order updates
 let sseClients = [];
 
@@ -151,6 +167,15 @@ app.post("/merge", authCheck, async (req, res) => {
       }
     }
 
+    // Apply ingredient-map overrides (user-edited search terms)
+    const ingredientMap = loadIngredientMap();
+    for (const [key, ing] of merged) {
+      if (ingredientMap[key]) {
+        ing.search_term = ingredientMap[key];
+        ing.search_term_source = "override";
+      }
+    }
+
     // Flag pantry staples (fuzzy match)
     for (const [key, ing] of merged) {
       ing.isStaple = staples.some(
@@ -184,16 +209,21 @@ app.post("/merge", authCheck, async (req, res) => {
         if (coziItems.length > 0) {
           groups.unshift({
             category: "from cozi",
-            items: coziItems.map((item) => ({
-              name: item.text,
-              qty: null,
-              unit: null,
-              category: "from cozi",
-              source: "cozi",
-              itemId: item.itemId,
-              listId: item.listId,
-              isStaple: false,
-            })),
+            items: coziItems.map((item) => {
+              const coziKey = item.text.toLowerCase();
+              const override = ingredientMap[coziKey];
+              return {
+                name: item.text,
+                qty: null,
+                unit: null,
+                category: "from cozi",
+                source: "cozi",
+                itemId: item.itemId,
+                listId: item.listId,
+                isStaple: false,
+                ...(override ? { search_term: override, search_term_source: "override" } : {}),
+              };
+            }),
           });
         }
       } catch (err) {
@@ -208,6 +238,34 @@ app.post("/merge", authCheck, async (req, res) => {
     console.error("Merge error:", err.message);
     res.status(500).json({ error: "Failed to merge ingredients", details: err.message });
   }
+});
+
+// GET /ingredient-map — get all search term overrides
+app.get("/ingredient-map", authCheck, (req, res) => {
+  res.json(loadIngredientMap());
+});
+
+// PUT /ingredient-map — update a single ingredient's search term
+app.put("/ingredient-map", authCheck, (req, res) => {
+  const { ingredient, search_term } = req.body;
+  if (!ingredient || typeof ingredient !== "string") {
+    return res.status(400).json({ error: "Send { ingredient: \"name\", search_term: \"term\" }" });
+  }
+
+  const map = loadIngredientMap();
+  const key = ingredient.toLowerCase();
+
+  if (!search_term || search_term.trim() === "") {
+    // Empty search_term = remove override
+    delete map[key];
+    console.log(`Removed search term override for "${key}"`);
+  } else {
+    map[key] = search_term.trim();
+    console.log(`Set search term for "${key}" → "${search_term.trim()}"`);
+  }
+
+  saveIngredientMap(map);
+  res.json({ success: true, map });
 });
 
 // --- Order endpoints ---
@@ -343,6 +401,8 @@ https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
   console.log(`  GET  /recipes/:name   — Get recipe details`);
   console.log(`  POST /sync            — Sync recipes from Google Doc`);
   console.log(`  POST /merge           — Merge ingredients from selected recipes`);
+  console.log(`  GET  /ingredient-map  — Get search term overrides`);
+  console.log(`  PUT  /ingredient-map  — Set search term for an ingredient`);
   console.log(`  GET  /cozi            — Fetch Cozi shopping list`);
   console.log(`  POST /cozi/done       — Mark Cozi items as done`);
   console.log(`  POST /order/start     — Start adding items to Whole Foods cart`);
