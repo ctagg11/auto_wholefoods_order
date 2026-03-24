@@ -12,11 +12,13 @@ const ORDER_TIMEOUT_MS = 10 * 60 * 1000;
 class ClaudeOrderer extends EventEmitter {
   constructor() {
     super();
-    this.state = "idle"; // idle | running | login-needed | done | error
+    this.state = "idle"; // idle | running | login-needed | cart-ready | checking-out | done | error
     this.results = [];
     this.items = [];
     this.process = null;
     this.timeoutTimer = null;
+    this.deliverySlots = [];
+    this.cartTotal = null;
   }
 
   // Override emit to also log to console (matches OrderPlacer behavior)
@@ -57,17 +59,29 @@ CRITICAL OUTPUT FORMAT:
 After each item, print EXACTLY one of these status lines to stdout (the brackets and format matter):
   [SEARCHING] item_name
   [ADDED] item_name → product_name
+  [SUBSTITUTED] item_name → substitute_product_name
   [NOT_FOUND] item_name → reason
   [ERROR] item_name → error_message
+
+If the product you add is a clearly different item than what was requested (e.g. asked for "barilla rotini" but only found "store brand penne"), use [SUBSTITUTED] instead of [ADDED].
 
 If Amazon asks you to sign in, print this IMMEDIATELY and then exit:
   [LOGIN_NEEDED]
 
-When all items are processed, print:
+After all items are added, navigate to the cart page (https://www.amazon.com/cart) and print:
+  [CART_TOTAL] $XX.XX
+
+Then navigate to the Whole Foods delivery checkout/scheduling page and look for available delivery windows. For each slot you can find, print:
+  [SLOT] slot_id | day_and_date | time_range | fee
+Example:
+  [SLOT] slot-1 | Sunday, Mar 30 | 10am - 12pm | FREE
+  [SLOT] slot-2 | Sunday, Mar 30 | 2pm - 4pm | $4.99
+
+When all items are processed and cart/slots are read, print:
   [DONE] X of Y items added
 
 RULES:
-- Do NOT proceed to checkout — stop after adding items to cart
+- Do NOT proceed to checkout — stop after reading cart total and delivery slots
 - If Amazon shows a sign-in page after navigating, print [LOGIN_NEEDED] and stop — do NOT try to log in
 - If a search returns no results, try simplifying the search term (drop adjectives like "organic") and retry once
 - Prefer Whole Foods / 365 brand products when available
@@ -83,6 +97,8 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
   async startOrder(items) {
     this.items = items;
     this.results = [];
+    this.deliverySlots = [];
+    this.cartTotal = null;
     this.state = "running";
     this.clearTimeout();
 
@@ -313,6 +329,76 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
         continue;
       }
 
+      // [SUBSTITUTED] item_name → substitute_product_name
+      const subMatch = trimmed.match(/^\[SUBSTITUTED\]\s*(.+?)\s*→\s*(.+)$/);
+      if (subMatch) {
+        const name = subMatch[1].trim();
+        const product = subMatch[2].trim();
+        const index = this.findItemIndex(name);
+        if (!this.hasResult(name)) {
+          this.results.push({ name, found: true, productName: product, substituted: true });
+        }
+        if (index >= 0) {
+          this.emit("item", {
+            index,
+            total: this.items.length,
+            name,
+            status: "substituted",
+            product,
+          });
+        }
+        continue;
+      }
+
+      // [CART_TOTAL] $XX.XX
+      const cartMatch = trimmed.match(/^\[CART_TOTAL\]\s*\$?([\d.]+)/);
+      if (cartMatch) {
+        this.cartTotal = parseFloat(cartMatch[1]);
+        this.emit("status", {
+          phase: "cart-review",
+          message: `Cart total: $${this.cartTotal.toFixed(2)}`,
+          cartTotal: this.cartTotal,
+        });
+        continue;
+      }
+
+      // [SLOT] slot_id | day_and_date | time_range | fee
+      const slotMatch = trimmed.match(/^\[SLOT\]\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+?)\s*\|\s*(.+)$/);
+      if (slotMatch) {
+        this.deliverySlots.push({
+          id: slotMatch[1].trim(),
+          date: slotMatch[2].trim(),
+          time: slotMatch[3].trim(),
+          fee: slotMatch[4].trim(),
+        });
+        this.emit("status", {
+          phase: "reading-slots",
+          message: `Found delivery slot: ${slotMatch[2].trim()} ${slotMatch[3].trim()}`,
+        });
+        continue;
+      }
+
+      // [CHECKOUT_READY] order_total
+      const checkoutMatch = trimmed.match(/^\[CHECKOUT_READY\]\s*(.*)$/);
+      if (checkoutMatch) {
+        this.emit("status", {
+          phase: "checkout-ready",
+          message: "Checkout is ready — go to your Mac and click 'Place your order'.",
+          orderTotal: checkoutMatch[1].trim(),
+        });
+        continue;
+      }
+
+      // [CHECKOUT_ERROR] description
+      const checkoutErrMatch = trimmed.match(/^\[CHECKOUT_ERROR\]\s*(.+)$/);
+      if (checkoutErrMatch) {
+        this.emit("status", {
+          phase: "error",
+          message: `Checkout error: ${checkoutErrMatch[1].trim()}`,
+        });
+        continue;
+      }
+
       // [DONE] X of Y items added
       const doneMatch = trimmed.match(/^\[DONE\]\s*(\d+)\s*of\s*(\d+)/);
       if (doneMatch) {
@@ -370,16 +456,32 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
         message: `Claude Code exited with code ${exitCode}. Check Mac terminal for details.`,
       });
     } else {
-      this.state = "done";
+      // If we got cart info, go to cart-ready state for review
+      // Otherwise go straight to done (fallback)
+      this.state = this.cartTotal !== null || this.deliverySlots.length > 0
+        ? "cart-ready"
+        : "done";
+
+      const phase = this.state === "cart-ready" ? "cart-ready" : "complete";
+
       this.emit("status", {
-        phase: "complete",
-        message: `Done! ${added} of ${this.items.length} items added to cart.`,
+        phase,
+        message: this.state === "cart-ready"
+          ? `${added} items in cart — review and pick a delivery slot.`
+          : `Done! ${added} of ${this.items.length} items added to cart.`,
         added,
         total: this.items.length,
+        cartTotal: this.cartTotal,
+        deliverySlots: this.deliverySlots,
+        substitutions: this.results.filter((r) => r.substituted).map((r) => ({
+          name: r.name,
+          product: r.productName,
+        })),
         notFound: notFound.map((r) => ({
           name: r.name,
           reason: r.reason || "unknown",
         })),
+        results: this.results,
       });
     }
 
@@ -464,6 +566,106 @@ Write the Puppeteer script to a temp file and execute it with Node.js. Do not us
         message: `Failed to restart Claude Code: ${err.message}`,
       });
     });
+  }
+
+  // --- Checkout phase ---
+
+  buildCheckoutPrompt(slotId) {
+    return `You are completing a Whole Foods checkout on Amazon.
+
+SETUP:
+- Write and run a Node.js script using Puppeteer (already installed in this project)
+- Use the existing Chrome profile at: ${CHROME_DATA}
+- Launch with headless: false, window size 1280x900
+- The user is already logged into Amazon and has items in their Whole Foods cart
+
+TASK:
+1. Navigate to the Whole Foods checkout page
+2. ${slotId ? `Select the delivery slot with id or matching "${slotId}"` : "Select the first available FREE delivery slot, or the cheapest one"}
+3. Proceed through checkout until you reach the final "Place your order" button
+4. STOP — do NOT click "Place your order"
+5. Take a screenshot if possible so the user can verify
+
+Print these markers:
+  [CHECKOUT_READY] order_total
+when you've reached the final confirmation page.
+
+If anything goes wrong:
+  [CHECKOUT_ERROR] description
+
+If Amazon asks to sign in:
+  [LOGIN_NEEDED]
+
+CRITICAL: Do NOT place the order. Stop at the review/confirmation page.
+Write one Puppeteer script, use require() not ES modules.`;
+  }
+
+  async startCheckout(slotId) {
+    if (this.state !== "cart-ready") return;
+
+    this.state = "checking-out";
+    this.emit("status", {
+      phase: "checking-out",
+      message: "Starting checkout...",
+    });
+
+    const prompt = this.buildCheckoutPrompt(slotId);
+
+    this.process = spawn("claude", [
+      "-p", prompt,
+      "--output-format", "stream-json",
+      "--allowedTools", "Bash,Read,Write,Edit",
+    ], {
+      cwd: path.join(__dirname, ".."),
+      env: { ...process.env },
+    });
+
+    this.timeoutTimer = setTimeout(() => {
+      this.cancel("Checkout timed out after 10 minutes.");
+    }, ORDER_TIMEOUT_MS);
+
+    let buffer = "";
+
+    this.process.stdout.on("data", (chunk) => {
+      buffer += chunk.toString();
+      const lines = buffer.split("\n");
+      buffer = lines.pop();
+      for (const line of lines) {
+        if (line.trim()) this.handleStreamLine(line.trim());
+      }
+    });
+
+    this.process.stderr.on("data", (chunk) => {
+      const text = chunk.toString().trim();
+      if (text) console.log(`[claude-checkout stderr] ${text}`);
+    });
+
+    this.process.on("close", (code) => {
+      this.clearTimeout();
+      if (buffer.trim()) this.handleStreamLine(buffer.trim());
+      this.finalizeCheckout(code);
+    });
+
+    this.process.on("error", (err) => {
+      this.clearTimeout();
+      this.state = "error";
+      this.emit("status", {
+        phase: "error",
+        message: `Checkout failed to start: ${err.message}`,
+      });
+    });
+  }
+
+  finalizeCheckout(exitCode) {
+    if (this.state === "error") return;
+
+    this.state = "done";
+    this.emit("status", {
+      phase: "checkout-ready",
+      message: "Checkout is ready — go to your Mac and click 'Place your order' to confirm.",
+    });
+    this.saveOrder();
+    this.process = null;
   }
 
   // --- Save order history ---

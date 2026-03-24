@@ -604,6 +604,197 @@
       color: #34a853;
     }
 
+    /* --- Substitution badge --- */
+    .order-icon.substituted { color: #f5a623; }
+
+    .sub-badge {
+      display: inline-block;
+      font-size: 11px;
+      background: #fff3e0;
+      color: #e65100;
+      padding: 1px 6px;
+      border-radius: 4px;
+      margin-left: 6px;
+      font-weight: 600;
+    }
+
+    /* --- Cart review screen --- */
+    .cart-summary {
+      background: #fff;
+      margin: 12px;
+      border-radius: 12px;
+      padding: 20px;
+      text-align: center;
+    }
+
+    .cart-total {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .cart-count {
+      font-size: 15px;
+      color: #888;
+    }
+
+    .slot-list {
+      padding: 0 12px 8px;
+    }
+
+    .slot-item {
+      background: #fff;
+      margin-bottom: 1px;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      cursor: pointer;
+    }
+
+    .slot-item:first-child { border-radius: 12px 12px 0 0; }
+    .slot-item:last-child { border-radius: 0 0 12px 12px; margin-bottom: 8px; }
+    .slot-item:only-child { border-radius: 12px; }
+    .slot-item:active { background: #f0f0f0; }
+    .slot-item.selected { background: #e8f0fe; border-left: 3px solid #007aff; }
+
+    .slot-radio {
+      width: 22px;
+      height: 22px;
+      border: 2px solid #ccc;
+      border-radius: 50%;
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .slot-item.selected .slot-radio {
+      border-color: #007aff;
+      background: #007aff;
+    }
+
+    .slot-item.selected .slot-radio::after {
+      content: "";
+      width: 8px;
+      height: 8px;
+      background: #fff;
+      border-radius: 50%;
+    }
+
+    .slot-info { flex: 1; }
+    .slot-date { font-weight: 600; font-size: 16px; }
+    .slot-time { font-size: 14px; color: #666; }
+    .slot-fee { font-size: 14px; font-weight: 600; color: #34a853; }
+    .slot-fee.paid { color: #d32f2f; }
+
+    .substitution-list {
+      background: #fff3e0;
+      margin: 0 12px 12px;
+      border-radius: 12px;
+      padding: 16px 20px;
+    }
+
+    .substitution-list h3 {
+      font-size: 15px;
+      color: #e65100;
+      margin-bottom: 8px;
+    }
+
+    .sub-item {
+      font-size: 14px;
+      padding: 4px 0;
+      color: #333;
+    }
+
+    .sub-original {
+      text-decoration: line-through;
+      color: #999;
+    }
+
+    /* --- Order history --- */
+    .history-list {
+      padding: 8px 0 80px;
+    }
+
+    .history-item {
+      background: #fff;
+      margin: 0 12px 1px;
+      padding: 16px 20px;
+      cursor: pointer;
+    }
+
+    .history-item:first-child { border-radius: 12px 12px 0 0; }
+    .history-item:last-child { border-radius: 0 0 12px 12px; margin-bottom: 8px; }
+    .history-item:only-child { border-radius: 12px; }
+    .history-item:active { background: #f0f0f0; }
+
+    .history-date { font-weight: 600; font-size: 16px; }
+    .history-detail { font-size: 14px; color: #888; margin-top: 2px; }
+
+    .history-results {
+      padding: 12px;
+    }
+
+    .history-results .order-item {
+      margin: 0 0 1px;
+    }
+
+    /* --- Recipe import --- */
+    .import-form {
+      padding: 20px 12px;
+    }
+
+    .import-input {
+      width: 100%;
+      font-size: 16px;
+      padding: 12px 14px;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+      font-family: inherit;
+      -webkit-appearance: none;
+      margin-bottom: 12px;
+    }
+
+    .import-input:focus {
+      outline: none;
+      border-color: #007aff;
+    }
+
+    .import-preview {
+      background: #fff;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 12px;
+      display: none;
+    }
+
+    .import-preview h3 {
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+
+    .import-preview .ing-count {
+      color: #888;
+      font-size: 14px;
+      margin-bottom: 12px;
+    }
+
+    .import-tags {
+      display: flex;
+      gap: 6px;
+      flex-wrap: wrap;
+      margin-bottom: 12px;
+    }
+
+    .import-tag {
+      font-size: 12px;
+      background: #e8f0fe;
+      color: #007aff;
+      padding: 2px 8px;
+      border-radius: 4px;
+    }
+
     /* Space for bottom bar on recipe screen */
     .recipe-list {
       padding-bottom: 100px;
@@ -619,7 +810,11 @@
   <div id="screen-picker" class="screen active">
     <div class="header">
       <h1>Groceries</h1>
-      <button class="header-btn" id="sync-btn" onclick="syncRecipes()">Sync</button>
+      <div style="display:flex;gap:8px">
+        <button class="header-btn" style="background:#34a853" onclick="showScreen('screen-import')">+ Recipe</button>
+        <button class="header-btn" style="background:#666" onclick="showHistory()">History</button>
+        <button class="header-btn" id="sync-btn" onclick="syncRecipes()">Sync</button>
+      </div>
     </div>
     <div id="cozi-toggle" class="cozi-toggle" onclick="toggleCozi()" style="display:none">
       <div>
@@ -674,6 +869,66 @@
       <button class="action-btn" onclick="continueOrder()">I've Logged In — Continue</button>
     </div>
     <div id="order-summary" class="order-summary" style="display:none"></div>
+  </div>
+
+  <!-- Screen 4: Cart Review -->
+  <div id="screen-cart-review" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="backFromCartReview()">&#8592; Back</button>
+      <h1>Review Cart</h1>
+      <div style="width:60px"></div>
+    </div>
+    <div id="cart-summary" class="cart-summary">
+      <div class="cart-total" id="cart-total-display">$0.00</div>
+      <div class="cart-count" id="cart-count-display">0 items</div>
+    </div>
+    <div id="substitution-section"></div>
+    <div id="not-found-section"></div>
+    <div id="slot-section">
+      <div class="category-header">Delivery Slots</div>
+      <div class="slot-list" id="slot-list">
+        <div class="empty-state" style="padding:20px">No delivery slots found. Check the Mac browser.</div>
+      </div>
+    </div>
+    <div id="cart-items-section">
+      <div class="category-header">Items in Cart</div>
+      <div id="cart-items-list" class="order-items" style="padding-bottom:20px"></div>
+    </div>
+    <div class="action-bar">
+      <button class="action-btn" id="checkout-btn" onclick="startCheckout()">
+        Proceed to Checkout
+        <span class="sub" id="checkout-sub">Select a delivery slot above</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Screen 5: Order History -->
+  <div id="screen-history" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showPicker()">&#8592; Back</button>
+      <h1>Past Orders</h1>
+      <div style="width:60px"></div>
+    </div>
+    <div id="history-list" class="history-list">
+      <div class="loading">Loading orders</div>
+    </div>
+  </div>
+
+  <!-- Screen 6: Recipe Import -->
+  <div id="screen-import" class="screen">
+    <div class="header">
+      <button class="back-btn" onclick="showPicker()">&#8592; Back</button>
+      <h1>Import Recipe</h1>
+      <div style="width:60px"></div>
+    </div>
+    <div class="import-form">
+      <input class="import-input" type="url" id="import-url" placeholder="Paste recipe URL here..." autocomplete="off">
+      <button class="action-btn" id="import-btn" onclick="importRecipe()" style="width:100%">
+        Import Recipe
+        <span class="sub">Paste a URL and tap to extract</span>
+      </button>
+      <div class="import-preview" id="import-preview"></div>
+    </div>
   </div>
 
   <script>
@@ -1155,36 +1410,6 @@
       }
     }
 
-    function handleOrderStatus(data) {
-      const progressText = document.getElementById("progress-text");
-      progressText.textContent = data.message;
-
-      if (data.phase === "login-needed") {
-        document.getElementById("login-prompt").style.display = "block";
-        document.getElementById("progress-fill").style.width = "0%";
-      }
-
-      if (data.phase === "ordering") {
-        document.getElementById("login-prompt").style.display = "none";
-      }
-
-      if (data.phase === "complete") {
-        document.getElementById("progress-fill").style.width = "100%";
-        closeOrderSSE();
-        showOrderSummary(data);
-      }
-
-      if (data.phase === "error") {
-        document.getElementById("progress-fill").style.width = "0%";
-        progressText.textContent = data.message;
-        closeOrderSSE();
-        // Let user go back freely
-        document.getElementById("order-back-btn").onclick = function () {
-          showIngredients();
-        };
-      }
-    }
-
     function handleItemUpdate(data) {
       const el = document.getElementById("order-item-" + data.index);
       if (!el) return;
@@ -1198,6 +1423,19 @@
       } else if (data.status === "added") {
         icon.className = "order-icon added";
         icon.innerHTML = "&#10003;"; // checkmark
+        if (data.product) {
+          let detail = el.querySelector(".order-item-detail");
+          if (!detail) {
+            detail = document.createElement("div");
+            detail.className = "order-item-detail";
+            nameDiv.parentNode.appendChild(detail);
+          }
+          detail.textContent = data.product;
+        }
+      } else if (data.status === "substituted") {
+        icon.className = "order-icon substituted";
+        icon.innerHTML = "&#8644;"; // swap arrows
+        nameDiv.innerHTML += '<span class="sub-badge">Sub</span>';
         if (data.product) {
           let detail = el.querySelector(".order-item-detail");
           if (!detail) {
@@ -1226,11 +1464,229 @@
         `${data.index + 1} of ${data.total} items...`;
     }
 
+    function handleOrderStatus(data) {
+      const progressText = document.getElementById("progress-text");
+      progressText.textContent = data.message;
+
+      if (data.phase === "login-needed") {
+        document.getElementById("login-prompt").style.display = "block";
+        document.getElementById("progress-fill").style.width = "0%";
+      }
+
+      if (data.phase === "ordering" || data.phase === "reading-slots" || data.phase === "cart-review") {
+        document.getElementById("login-prompt").style.display = "none";
+      }
+
+      // Cart is ready — switch to cart review screen
+      if (data.phase === "cart-ready") {
+        document.getElementById("progress-fill").style.width = "100%";
+        closeOrderSSE();
+        showCartReview(data);
+        return;
+      }
+
+      if (data.phase === "complete") {
+        document.getElementById("progress-fill").style.width = "100%";
+        closeOrderSSE();
+        showOrderSummary(data);
+      }
+
+      if (data.phase === "checkout-ready") {
+        closeOrderSSE();
+        showCheckoutConfirmation(data);
+      }
+
+      if (data.phase === "error") {
+        document.getElementById("progress-fill").style.width = "0%";
+        progressText.textContent = data.message;
+        closeOrderSSE();
+        document.getElementById("order-back-btn").onclick = function () {
+          showIngredients();
+        };
+      }
+    }
+
+    // --- Cart Review Screen ---
+
+    var selectedSlotId = null;
+    var lastCartData = null;
+
+    function showCartReview(data) {
+      lastCartData = data;
+      showScreen("screen-cart-review");
+
+      // Cart total
+      if (data.cartTotal) {
+        document.getElementById("cart-total-display").textContent = "$" + data.cartTotal.toFixed(2);
+      } else {
+        document.getElementById("cart-total-display").textContent = "Cart Ready";
+      }
+      document.getElementById("cart-count-display").textContent =
+        data.added + " of " + data.total + " items added";
+
+      // Substitutions
+      const subSection = document.getElementById("substitution-section");
+      if (data.substitutions && data.substitutions.length > 0) {
+        let html = '<div class="substitution-list"><h3>Substitutions</h3>';
+        for (const sub of data.substitutions) {
+          html += `<div class="sub-item"><span class="sub-original">${esc(sub.name)}</span> &rarr; ${esc(sub.product)}</div>`;
+        }
+        html += "</div>";
+        subSection.innerHTML = html;
+      } else {
+        subSection.innerHTML = "";
+      }
+
+      // Not found
+      const nfSection = document.getElementById("not-found-section");
+      if (data.notFound && data.notFound.length > 0) {
+        let html = '<div class="substitution-list" style="background:#fff3f3"><h3 style="color:#d32f2f">Not Found</h3>';
+        for (const item of data.notFound) {
+          html += `<div class="sub-item" style="color:#d32f2f">${esc(item.name)}</div>`;
+        }
+        html += "</div>";
+        nfSection.innerHTML = html;
+      } else {
+        nfSection.innerHTML = "";
+      }
+
+      // Delivery slots
+      const slotList = document.getElementById("slot-list");
+      if (data.deliverySlots && data.deliverySlots.length > 0) {
+        selectedSlotId = data.deliverySlots[0].id; // pre-select first
+        let html = "";
+        for (const slot of data.deliverySlots) {
+          const sel = slot.id === selectedSlotId ? " selected" : "";
+          const feeClass = slot.fee.toUpperCase() === "FREE" ? "" : " paid";
+          html += `
+            <div class="slot-item${sel}" onclick="selectSlot('${esc(slot.id)}', this)">
+              <div class="slot-radio"></div>
+              <div class="slot-info">
+                <div class="slot-date">${esc(slot.date)}</div>
+                <div class="slot-time">${esc(slot.time)}</div>
+              </div>
+              <div class="slot-fee${feeClass}">${esc(slot.fee)}</div>
+            </div>`;
+        }
+        slotList.innerHTML = html;
+        updateCheckoutButton();
+      } else {
+        slotList.innerHTML = '<div class="empty-state" style="padding:20px;font-size:15px">No delivery slots found. You can still checkout on your Mac.</div>';
+        selectedSlotId = null;
+        updateCheckoutButton();
+      }
+
+      // Cart items
+      const itemsList = document.getElementById("cart-items-list");
+      if (data.results) {
+        let html = "";
+        for (const r of data.results) {
+          if (r.found) {
+            const icon = r.substituted
+              ? '<div class="order-icon substituted">&#8644;</div>'
+              : '<div class="order-icon added">&#10003;</div>';
+            const badge = r.substituted ? '<span class="sub-badge">Substituted</span>' : "";
+            html += `
+              <div class="order-item">
+                ${icon}
+                <div>
+                  <div class="order-item-name">${esc(r.name)}${badge}</div>
+                  <div class="order-item-detail">${esc(r.productName || "")}</div>
+                </div>
+              </div>`;
+          }
+        }
+        itemsList.innerHTML = html;
+      }
+    }
+
+    function selectSlot(slotId, el) {
+      selectedSlotId = slotId;
+      document.querySelectorAll(".slot-item").forEach((s) => s.classList.remove("selected"));
+      el.classList.add("selected");
+      updateCheckoutButton();
+    }
+
+    function updateCheckoutButton() {
+      const btn = document.getElementById("checkout-btn");
+      const sub = document.getElementById("checkout-sub");
+      if (selectedSlotId) {
+        btn.disabled = false;
+        sub.textContent = "Claude will select this slot and go to checkout";
+      } else {
+        btn.disabled = false; // still allow — they can checkout on Mac
+        sub.textContent = "No slot selected — checkout will use first available";
+      }
+    }
+
+    async function startCheckout() {
+      document.getElementById("checkout-btn").disabled = true;
+      document.getElementById("checkout-sub").textContent = "Starting checkout...";
+
+      try {
+        const res = await fetch("/order/checkout", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ slotId: selectedSlotId }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.error || "Checkout failed", true);
+          document.getElementById("checkout-btn").disabled = false;
+          return;
+        }
+        // Switch to order screen to show checkout progress
+        showScreen("screen-order");
+        document.getElementById("progress-fill").style.width = "50%";
+        document.getElementById("progress-text").textContent = "Checking out...";
+        document.getElementById("order-items").innerHTML = "";
+        document.getElementById("order-summary").style.display = "none";
+        openOrderSSE();
+      } catch (err) {
+        showToast("Server error: " + err.message, true);
+        document.getElementById("checkout-btn").disabled = false;
+      }
+    }
+
+    function backFromCartReview() {
+      showScreen("screen-order");
+      // Show the summary again
+      if (lastCartData) showOrderSummary(lastCartData);
+    }
+
+    function showCheckoutConfirmation(data) {
+      const summary = document.getElementById("order-summary");
+      let html = '<div class="summary-card">';
+      html += '<h2>Checkout Ready</h2>';
+      html += `<p>${esc(data.message)}</p>`;
+      if (data.orderTotal) {
+        html += `<div style="font-size:22px;font-weight:700;margin:12px 0">${esc(data.orderTotal)}</div>`;
+      }
+      html += '<div class="review-hint">Go to your Mac and click "Place your order" to confirm.</div>';
+      html += "</div>";
+      summary.innerHTML = html;
+      summary.style.display = "block";
+      document.getElementById("order-back-btn").onclick = function () { showPicker(); };
+    }
+
     function showOrderSummary(data) {
       const summary = document.getElementById("order-summary");
       let html = '<div class="summary-card">';
       html += `<h2>${data.added} of ${data.total} Added</h2>`;
-      html += `<p>Items have been added to your Amazon Whole Foods cart.</p>`;
+
+      if (data.cartTotal) {
+        html += `<p>Cart total: $${data.cartTotal.toFixed(2)}</p>`;
+      } else {
+        html += `<p>Items have been added to your Whole Foods cart.</p>`;
+      }
+
+      if (data.substitutions && data.substitutions.length > 0) {
+        html += '<div class="not-found-list" style="background:#fff3e0;color:#e65100"><strong>Substitutions:</strong>';
+        for (const sub of data.substitutions) {
+          html += `<div>&#8226; <span style="text-decoration:line-through">${esc(sub.name)}</span> &rarr; ${esc(sub.product)}</div>`;
+        }
+        html += "</div>";
+      }
 
       if (data.notFound && data.notFound.length > 0) {
         html += '<div class="not-found-list"><strong>Could not find:</strong>';
@@ -1240,12 +1696,20 @@
         html += "</div>";
       }
 
-      html += '<div class="review-hint">Go to your Mac to review the cart and check out.</div>';
+      // If cart-ready, show "Review Cart" button
+      if (data.deliverySlots && data.deliverySlots.length > 0) {
+        html += `<button class="action-btn" style="margin-top:16px;width:100%" onclick="showCartReview(lastCartData)">
+          Review Cart & Pick Delivery Slot
+          <span class="sub">${data.deliverySlots.length} slot${data.deliverySlots.length === 1 ? "" : "s"} available</span>
+        </button>`;
+      } else {
+        html += '<div class="review-hint">Go to your Mac to review the cart and check out.</div>';
+      }
+
       html += "</div>";
       summary.innerHTML = html;
       summary.style.display = "block";
 
-      // Let user go back freely now
       document.getElementById("order-back-btn").onclick = function () {
         showIngredients();
       };
@@ -1260,6 +1724,179 @@
         const data = await res.json();
         if (!data.success) {
           showToast(data.error || "Could not continue", true);
+        }
+      } catch (err) {
+        showToast("Server error: " + err.message, true);
+      }
+    }
+
+    // --- Order History ---
+
+    async function showHistory() {
+      showScreen("screen-history");
+      const list = document.getElementById("history-list");
+      list.innerHTML = '<div class="loading">Loading orders</div>';
+
+      try {
+        const res = await fetch("/orders", { headers });
+        const data = await res.json();
+        const orders = data.orders || [];
+
+        if (orders.length === 0) {
+          list.innerHTML = '<div class="empty-state">No orders yet. Place your first order!</div>';
+          return;
+        }
+
+        let html = "";
+        for (let i = 0; i < orders.length; i++) {
+          const o = orders[i];
+          const d = new Date(o.date);
+          const dateStr = d.toLocaleDateString("en-US", { weekday: "short", month: "short", day: "numeric" });
+          const notFound = (o.results || []).filter((r) => !r.found).length;
+          const subs = (o.results || []).filter((r) => r.substituted).length;
+
+          let detail = `${o.itemsAdded} of ${o.itemsRequested} items`;
+          if (subs > 0) detail += ` (${subs} substituted)`;
+          if (notFound > 0) detail += ` · ${notFound} not found`;
+
+          html += `
+            <div class="history-item" onclick="toggleHistoryDetail(${i})">
+              <div class="history-date">${esc(dateStr)}</div>
+              <div class="history-detail">${esc(detail)}</div>
+              <div class="history-results" id="history-detail-${i}" style="display:none"></div>
+            </div>`;
+
+          // Pre-render detail (hidden)
+          historyData[i] = o.results || [];
+        }
+        list.innerHTML = html;
+      } catch (err) {
+        list.innerHTML = '<div class="empty-state">Failed to load orders.</div>';
+      }
+    }
+
+    var historyData = {};
+
+    function toggleHistoryDetail(idx) {
+      const el = document.getElementById("history-detail-" + idx);
+      if (!el) return;
+
+      if (el.style.display !== "none") {
+        el.style.display = "none";
+        return;
+      }
+
+      const results = historyData[idx] || [];
+      if (el.innerHTML === "") {
+        let html = "";
+        for (const r of results) {
+          const icon = r.found
+            ? (r.substituted ? '<div class="order-icon substituted">&#8644;</div>' : '<div class="order-icon added">&#10003;</div>')
+            : '<div class="order-icon not-found">&#10007;</div>';
+          const badge = r.substituted ? '<span class="sub-badge">Sub</span>' : "";
+          const detail = r.found ? (r.productName || "") : (r.reason || "Not found");
+          html += `
+            <div class="order-item">
+              ${icon}
+              <div>
+                <div class="order-item-name">${esc(r.name)}${badge}</div>
+                <div class="order-item-detail">${esc(detail)}</div>
+              </div>
+            </div>`;
+        }
+        el.innerHTML = html || '<div style="padding:8px;color:#888">No details</div>';
+      }
+      el.style.display = "block";
+    }
+
+    // --- Recipe Import ---
+
+    var importedRecipe = null;
+
+    async function importRecipe() {
+      const urlInput = document.getElementById("import-url");
+      const url = urlInput.value.trim();
+      if (!url) {
+        showToast("Paste a recipe URL first", true);
+        return;
+      }
+
+      const btn = document.getElementById("import-btn");
+      btn.disabled = true;
+      btn.querySelector(".sub").textContent = "Extracting recipe...";
+
+      try {
+        const res = await fetch("/recipes/import", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ url }),
+        });
+        const data = await res.json();
+        if (!data.success) {
+          showToast(data.error || "Import failed", true);
+          btn.disabled = false;
+          btn.querySelector(".sub").textContent = "Paste a URL and tap to extract";
+          return;
+        }
+
+        importedRecipe = data.recipe;
+        showImportPreview(data.recipe);
+        btn.disabled = false;
+        btn.querySelector(".sub").textContent = "Paste a URL and tap to extract";
+      } catch (err) {
+        showToast("Server error: " + err.message, true);
+        btn.disabled = false;
+        btn.querySelector(".sub").textContent = "Paste a URL and tap to extract";
+      }
+    }
+
+    function showImportPreview(recipe) {
+      const preview = document.getElementById("import-preview");
+      let html = `<h3>${esc(recipe.name)}</h3>`;
+      html += `<div class="ing-count">${recipe.ingredients.length} ingredients · ${recipe.servings || "?"} servings</div>`;
+
+      if (recipe.tags && recipe.tags.length > 0) {
+        html += '<div class="import-tags">';
+        for (const tag of recipe.tags) {
+          html += `<span class="import-tag">${esc(tag)}</span>`;
+        }
+        html += "</div>";
+      }
+
+      html += "<div><strong>Ingredients:</strong></div>";
+      for (const ing of recipe.ingredients) {
+        const qty = ing.qty ? (ing.unit === "whole" ? ing.qty : `${ing.qty} ${ing.unit}`) : "";
+        html += `<div style="font-size:15px;padding:2px 0">${qty} ${esc(ing.name)}</div>`;
+      }
+
+      html += `<button class="action-btn" style="margin-top:16px;width:100%" onclick="saveImportedRecipe()">
+        Save Recipe
+        <span class="sub">Add to your recipe collection</span>
+      </button>`;
+
+      preview.innerHTML = html;
+      preview.style.display = "block";
+    }
+
+    async function saveImportedRecipe() {
+      if (!importedRecipe) return;
+
+      try {
+        const res = await fetch("/recipes/save", {
+          method: "POST",
+          headers,
+          body: JSON.stringify({ recipe: importedRecipe }),
+        });
+        const data = await res.json();
+        if (data.success) {
+          showToast(data.updated ? "Recipe updated!" : "Recipe saved!");
+          document.getElementById("import-preview").style.display = "none";
+          document.getElementById("import-url").value = "";
+          importedRecipe = null;
+          // Refresh recipe list
+          loadRecipes();
+        } else {
+          showToast("Failed to save", true);
         }
       } catch (err) {
         showToast("Server error: " + err.message, true);

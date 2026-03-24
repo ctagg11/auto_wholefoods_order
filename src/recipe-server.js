@@ -386,6 +386,184 @@ app.get("/health", (req, res) => {
   res.json({ status: "ok", recipes: loadRecipes().length });
 });
 
+// --- Order history ---
+
+const ORDERS_DIR = path.join(__dirname, "..", "orders");
+
+// GET /orders — list past orders (newest first)
+app.get("/orders", authCheck, (req, res) => {
+  if (!fs.existsSync(ORDERS_DIR)) {
+    return res.json({ orders: [] });
+  }
+
+  const files = fs.readdirSync(ORDERS_DIR)
+    .filter((f) => f.endsWith(".json"))
+    .sort()
+    .reverse();
+
+  const orders = files.map((f) => {
+    try {
+      const data = JSON.parse(fs.readFileSync(path.join(ORDERS_DIR, f), "utf-8"));
+      return {
+        filename: f,
+        date: data.date,
+        itemsRequested: data.itemsRequested || 0,
+        itemsAdded: data.itemsAdded || 0,
+        results: data.results || [],
+        total: data.total || null,
+      };
+    } catch {
+      return null;
+    }
+  }).filter(Boolean);
+
+  res.json({ orders });
+});
+
+// --- Cart review + checkout ---
+
+// POST /order/checkout — tell Claude to proceed with checkout and pick a delivery slot
+app.post("/order/checkout", authCheck, async (req, res) => {
+  const orderer = getActiveOrderer();
+  if (orderer.state !== "cart-ready") {
+    return res.status(400).json({ error: "Cart is not ready for checkout" });
+  }
+
+  const { slotId } = req.body; // optional preferred slot
+  console.log("Starting checkout phase...");
+  wireOrderEvents(orderer);
+  res.json({ success: true, message: "Starting checkout..." });
+
+  orderer.startCheckout(slotId);
+});
+
+// --- Recipe URL parsing ---
+
+// POST /recipes/import — extract recipe from a URL using Claude API
+app.post("/recipes/import", authCheck, async (req, res) => {
+  const { url } = req.body;
+  if (!url || typeof url !== "string") {
+    return res.status(400).json({ error: "Send { url: \"https://...\" }" });
+  }
+
+  try {
+    console.log(`Importing recipe from: ${url}`);
+
+    // Fetch the page content
+    const pageRes = await fetch(url, {
+      headers: { "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7)" },
+    });
+    if (!pageRes.ok) {
+      return res.status(400).json({ error: `Could not fetch URL (${pageRes.status})` });
+    }
+    const html = await pageRes.text();
+
+    // Strip HTML tags for a rough text extraction, keep it under ~8000 chars
+    const textContent = html
+      .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, "")
+      .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, "")
+      .replace(/<[^>]+>/g, " ")
+      .replace(/&nbsp;/g, " ")
+      .replace(/&amp;/g, "&")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 8000);
+
+    // Use Claude API to extract structured recipe
+    const secrets = JSON.parse(fs.readFileSync(path.join(__dirname, "..", "config", "secrets.json"), "utf-8"));
+    const Anthropic = require("@anthropic-ai/sdk");
+    const client = new Anthropic({ apiKey: secrets.anthropic_api_key });
+
+    const msg = await client.messages.create({
+      model: "claude-sonnet-4-20250514",
+      max_tokens: 2000,
+      messages: [
+        {
+          role: "user",
+          content: `Extract the recipe from this web page text and return ONLY valid JSON (no markdown, no backticks) in this exact format:
+
+{
+  "name": "Recipe Name",
+  "servings": 4,
+  "tags": ["weeknight", "easy"],
+  "source": "${url}",
+  "ingredients": [
+    {
+      "name": "ingredient name (lowercase)",
+      "qty": 1.5,
+      "unit": "lb or cup or tbsp or tsp or oz or whole or clove or can",
+      "category": "produce or meat or seafood or dairy or bakery or frozen or pantry or canned or other",
+      "search_term": "what to search on Whole Foods (specific brand/type if mentioned)"
+    }
+  ],
+  "steps": ["Step 1 text", "Step 2 text"]
+}
+
+Rules:
+- Use lowercase for ingredient names
+- "whole" as unit for items counted individually (e.g. 3 whole bell peppers)
+- search_term should be more specific than name (e.g. name:"chicken breast" → search_term:"boneless skinless chicken breast")
+- Keep tags simple: weeknight, easy, quick, kid-friendly, healthy, comfort, vegetarian, etc.
+- If servings aren't specified, estimate based on the recipe
+
+Page text:
+${textContent}`,
+        },
+      ],
+    });
+
+    const responseText = msg.content[0].text;
+    let recipe;
+    try {
+      recipe = JSON.parse(responseText);
+    } catch {
+      // Try to extract JSON from the response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        recipe = JSON.parse(jsonMatch[0]);
+      } else {
+        return res.status(500).json({ error: "Could not parse recipe from Claude's response" });
+      }
+    }
+
+    // Validate structure
+    if (!recipe.name || !recipe.ingredients || !Array.isArray(recipe.ingredients)) {
+      return res.status(500).json({ error: "Invalid recipe structure from Claude" });
+    }
+
+    res.json({ success: true, recipe });
+  } catch (err) {
+    console.error("Recipe import error:", err.message);
+    res.status(500).json({ error: "Failed to import recipe: " + err.message });
+  }
+});
+
+// POST /recipes/save — save an imported recipe to recipes.json
+app.post("/recipes/save", authCheck, (req, res) => {
+  const { recipe } = req.body;
+  if (!recipe || !recipe.name || !recipe.ingredients) {
+    return res.status(400).json({ error: "Invalid recipe data" });
+  }
+
+  const recipes = loadRecipes();
+
+  // Check for duplicate name
+  const existing = recipes.findIndex(
+    (r) => r.name.toLowerCase() === recipe.name.toLowerCase()
+  );
+  if (existing >= 0) {
+    recipes[existing] = recipe; // Update existing
+    console.log(`Updated recipe: ${recipe.name}`);
+  } else {
+    recipes.push(recipe);
+    console.log(`Added new recipe: ${recipe.name}`);
+  }
+
+  const recipesPath = path.join(__dirname, "..", "recipes", "recipes.json");
+  fs.writeFileSync(recipesPath, JSON.stringify(recipes, null, 2));
+  res.json({ success: true, total: recipes.length, updated: existing >= 0 });
+});
+
 // Start HTTPS server (Safari on iPhone forces https://)
 const certDir = path.join(__dirname, "..", "config", "certs");
 const sslOptions = {
@@ -409,7 +587,11 @@ https.createServer(sslOptions, app).listen(PORT, "0.0.0.0", () => {
   console.log(`  POST /order/cancel    — Cancel a running order`);
   console.log(`  POST /order/continue  — Resume after Amazon login`);
   console.log(`  GET  /order/events    — Real-time order status (SSE)`);
+  console.log(`  POST /order/checkout  — Proceed to checkout`);
   console.log(`  GET  /order/status    — Poll order state`);
+  console.log(`  GET  /orders          — Order history`);
+  console.log(`  POST /recipes/import  — Import recipe from URL`);
+  console.log(`  POST /recipes/save    — Save imported recipe`);
   console.log(`  Engine: ${USE_CLAUDE ? "Claude Code" : "Puppeteer (legacy)"}`);
   console.log(`\nPhone: https://10.0.0.167:${PORT}`);
   console.log(`All endpoints except /health require X-API-Key header`);

@@ -4,6 +4,7 @@
   "main": "src/recipe-server.js",
   "scripts": {
     "start": "node src/recipe-server.js",
+    "test": "node test/test-merge.js",
     "sync": "node -e \"require('./src/doc-sync').syncFromGoogleDoc().then(r => console.log(r.message)).catch(e => console.error(e.message))\""
   },
   "keywords": [],
